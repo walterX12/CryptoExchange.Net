@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Security.Authentication;
 using System.Threading.Tasks;
-using WebSocket4Net;
 
 namespace CryptoExchange.Net.Interfaces
 {
@@ -51,10 +50,6 @@ namespace CryptoExchange.Net.Interfaces
         /// Socket url
         /// </summary>
         string Url { get; }
-        /// <summary>
-        /// State
-        /// </summary>
-        WebSocketState SocketState { get; }
         /// <summary>
         /// Is closed
         /// </summary>

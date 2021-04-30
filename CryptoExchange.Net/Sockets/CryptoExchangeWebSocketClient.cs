@@ -192,7 +192,11 @@ namespace CryptoExchange.Net.Sockets
             await _socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", default).ConfigureAwait(false);
             _ctsSource.Cancel();
             _sendEvent.Set();
-            await Task.WhenAll(_sendTask, _receiveTask, _timeoutTask).ConfigureAwait(false);
+            var tasks = new List<Task> { _sendTask, _receiveTask };
+            if (_timeoutTask != null)
+                tasks.Add(_timeoutTask);
+
+            await Task.WhenAll(tasks).ConfigureAwait(false);
             Handle(closeHandlers);
             log.Write(LogVerbosity.Debug, $"Socket {Id} closed");
         }

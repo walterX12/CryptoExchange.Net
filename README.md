@@ -290,6 +290,9 @@ static async Task GetExchangeData(IExchangeClient client)
 ````
 
 ## Release notes
+* Version 4.0.0-beta2 - 30 apr 2021
+    * Fix for closing socket without timeout task
+
 * Version 4.0.0-beta1 - 30 apr 2021
     * Removed Websocket4Net dependency
     * Added custom ClientWebSocket implementation

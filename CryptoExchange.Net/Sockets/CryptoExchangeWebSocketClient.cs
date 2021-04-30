@@ -28,6 +28,7 @@ namespace CryptoExchange.Net.Sockets
         private readonly IDictionary<string, string> cookies;
         private readonly IDictionary<string, string> headers;
         private CancellationTokenSource _ctsSource;
+        private bool _closing;
 
         /// <summary>
         /// Log
@@ -189,18 +190,31 @@ namespace CryptoExchange.Net.Sockets
         public virtual async Task Close()
         {
             log.Write(LogVerbosity.Debug, $"Socket {Id} closing");
-            await _socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", default).ConfigureAwait(false);
-            _ctsSource.Cancel();
-            _sendEvent.Set();
-            var tasks = new List<Task> { _sendTask, _receiveTask };
-            if (_timeoutTask != null)
-                tasks.Add(_timeoutTask);
-
-            await Task.WhenAll(tasks).ConfigureAwait(false);
-            Handle(closeHandlers);
-            log.Write(LogVerbosity.Debug, $"Socket {Id} closed");
+            await CloseInternal(true, true, true);
         }
         
+        private async Task CloseInternal(bool closeSocket, bool waitSend, bool waitReceive)
+        {
+            if (_closing)
+                return;
+
+            _closing = true;
+            var tasksToAwait = new List<Task>();
+            if(closeSocket)
+                tasksToAwait.Add(_socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Closing", default));
+            _ctsSource.Cancel();
+            _sendEvent.Set();
+            if (waitSend)
+                tasksToAwait.Add(_sendTask);
+            if (waitReceive)
+                tasksToAwait.Add(_receiveTask);
+            if (_timeoutTask != null)
+                tasksToAwait.Add(_timeoutTask);
+
+            await Task.WhenAll(tasksToAwait).ConfigureAwait(false);
+            Handle(closeHandlers);
+        }
+
         public void Dispose()
         {
             log.Write(LogVerbosity.Debug, $"Socket {Id} disposing");
@@ -217,6 +231,7 @@ namespace CryptoExchange.Net.Sockets
         {
             log.Write(LogVerbosity.Debug, $"Socket {Id} resetting");
             _ctsSource = new CancellationTokenSource();
+            _closing = false;
             CreateSocket();
         }
         
@@ -239,8 +254,8 @@ namespace CryptoExchange.Net.Sockets
             {
                 _sendEvent.WaitOne();
 
-                if (_socket.State != WebSocketState.Open)
-                    break;
+                if (_closing || _socket.State != WebSocketState.Open)                
+                    break;                
 
                 if (!_sendBuffer.TryDequeue(out var data))
                     continue;
@@ -252,14 +267,13 @@ namespace CryptoExchange.Net.Sockets
                 catch (TaskCanceledException)
                 {
                     // cancelled
+                    break;
                 }
                 catch (WebSocketException wse)
                 {
                     // Connection closed unexpectedly                        
-                    _ctsSource.Cancel();
-                    await _receiveTask!.ConfigureAwait(false);
                     Handle(errorHandlers, wse);
-                    Handle(closeHandlers);
+                    await CloseInternal(false, false, true);
                     break;
                 }
             }
@@ -270,7 +284,7 @@ namespace CryptoExchange.Net.Sockets
             var buffer = new ArraySegment<byte>(new byte[4096]);
             while (true)
             {
-                if (_ctsSource.IsCancellationRequested)
+                if (_closing)
                     break;
 
                 MemoryStream? memoryStream = null;
@@ -290,11 +304,15 @@ namespace CryptoExchange.Net.Sockets
                     catch (WebSocketException wse)
                     {
                         // Connection closed unexpectedly                        
-                        _ctsSource.Cancel();
-                        _sendEvent.Set();
-                        await _sendTask!.ConfigureAwait(false);
                         Handle(errorHandlers, wse);
-                        Handle(closeHandlers);
+                        await CloseInternal(false, true, false);
+                        break;
+                    }
+
+                    if (receiveResult.MessageType == WebSocketMessageType.Close)
+                    {
+                        // Connection closed unexpectedly        
+                        await CloseInternal(true, true, true);
                         break;
                     }
 
@@ -319,12 +337,16 @@ namespace CryptoExchange.Net.Sockets
                 }
 
                 if (receiveResult?.MessageType == WebSocketMessageType.Close)
+                {
                     // Received close message
                     break;
+                }
 
-                if (receiveResult == null || _ctsSource.IsCancellationRequested)
+                if (receiveResult == null || _closing)
+                {
                     // Error during receiving or cancellation requested, stop.
                     break;
+                }
 
                 if (multiPartMessage)
                 {
@@ -364,7 +386,7 @@ namespace CryptoExchange.Net.Sockets
                 }
                 catch(Exception e)
                 {
-                    log.Write(LogVerbosity.Error, $"Socket {Id} unhandled exception during byte data interpretation: " + e.ToLogString());
+                    log.Write(LogVerbosity.Error, $"Socket {Id} unhandled exception during string data interpretation: " + e.ToLogString());
                     return;
                 }
             }
@@ -393,7 +415,7 @@ namespace CryptoExchange.Net.Sockets
 
                 if (DateTime.UtcNow - LastActionTime > Timeout)
                 {
-                    log.Write(LogVerbosity.Warning, $"No data received for {Timeout}, reconnecting socket");
+                    log.Write(LogVerbosity.Warning, $"Socket {Id} No data received for {Timeout}, reconnecting socket");
                     _ = Close().ConfigureAwait(false);
                     return;
                 }

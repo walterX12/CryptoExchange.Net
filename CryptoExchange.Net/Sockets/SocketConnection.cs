@@ -179,7 +179,7 @@ namespace CryptoExchange.Net.Sockets
             if (!HandleData(tokenData) && !handledResponse)
             {
                 if (!socketClient.UnhandledMessageExpected)
-                    log.Write(LogVerbosity.Warning, "Message not handled: " + tokenData);
+                    log.Write(LogVerbosity.Warning, $"Socket {Socket.Id} Message not handled: " + tokenData);
                 UnhandledMessage?.Invoke(tokenData);
             }
         }
@@ -346,7 +346,6 @@ namespace CryptoExchange.Net.Sockets
                 if (socketClient.sockets.ContainsKey(Socket.Id))
                     socketClient.sockets.TryRemove(Socket.Id, out _);
 
-                Socket.Dispose();
                 Closed?.Invoke();
             }
         }
@@ -363,11 +362,11 @@ namespace CryptoExchange.Net.Sockets
                 var authResult = await socketClient.AuthenticateSocket(this).ConfigureAwait(false);
                 if (!authResult)
                 {
-                    log.Write(LogVerbosity.Info, "Authentication failed on reconnected socket. Disconnecting and reconnecting.");
+                    log.Write(LogVerbosity.Info, $"Socket {Socket.Id} authentication failed on reconnected socket. Disconnecting and reconnecting.");
                     return false;
                 }
 
-                log.Write(LogVerbosity.Debug, "Authentication succeeded on reconnected socket.");
+                log.Write(LogVerbosity.Debug, $"Socket {Socket.Id} authentication succeeded on reconnected socket.");
             }
 
             List<SocketSubscription> subscriptionList;
@@ -389,11 +388,11 @@ namespace CryptoExchange.Net.Sockets
             Task.WaitAll(taskList.ToArray());
             if (!success)
             {
-                log.Write(LogVerbosity.Debug, "Resubscribing all subscriptions failed on reconnected socket. Disconnecting and reconnecting.");
+                log.Write(LogVerbosity.Debug, $"Socket {Socket.Id} resubscribing all subscriptions failed on reconnected socket. Disconnecting and reconnecting.");
                 return false;
             }
 
-            log.Write(LogVerbosity.Debug, "All subscription successfully resubscribed on reconnected socket.");
+            log.Write(LogVerbosity.Debug, $"Socket {Socket.Id} all subscription successfully resubscribed on reconnected socket.");
             return true;
         }
         

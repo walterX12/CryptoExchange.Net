@@ -82,7 +82,7 @@ namespace CryptoExchange.Net
             BaseAddress = options.BaseAddress;
             apiProxy = options.Proxy;
 
-            log.Write(LogVerbosity.Debug, $"Client configuration: {options}");
+            log.Write(LogVerbosity.Debug, $"Client configuration: {options}, CryptoExchange.Net: v{typeof(BaseClient).Assembly.GetName().Version}, {ClientName}.Net: v{GetType().Assembly.GetName().Version}");
             ShouldCheckObjects = options.ShouldCheckObjects;
         }
 
@@ -126,7 +126,7 @@ namespace CryptoExchange.Net
             }
             catch (Exception ex)
             {
-                var exceptionInfo = GetExceptionInfo(ex);
+                var exceptionInfo = ex.ToLogString();
                 var info = $"Deserialize Unknown Exception: {exceptionInfo}";
                 return new CallResult<JToken>(null, new DeserializeError(info, data));
             }
@@ -205,7 +205,7 @@ namespace CryptoExchange.Net
             }
             catch (Exception ex)
             {
-                var exceptionInfo = GetExceptionInfo(ex);
+                var exceptionInfo = ex.ToLogString();
                 var info = $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize Unknown Exception: {exceptionInfo}";
                 log.Write(LogVerbosity.Error, info);
                 return new CallResult<T>(default, new DeserializeError(info, obj));
@@ -276,7 +276,7 @@ namespace CryptoExchange.Net
                 else
                     data = "[Data only available in Debug LogVerbosity]";
 
-                var exceptionInfo = GetExceptionInfo(ex);
+                var exceptionInfo = ex.ToLogString();
                 log.Write(LogVerbosity.Error, $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize Unknown Exception: {exceptionInfo}, data: {data}");
                 return new CallResult<T>(default, new DeserializeError($"Deserialize Unknown Exception: {exceptionInfo}", data));
             }
@@ -429,30 +429,6 @@ namespace CryptoExchange.Net
                 }
             }
             return path;
-        }
-
-
-        /// <summary>
-        /// Get's all exception messages from a nested exception
-        /// </summary>
-        /// <param name="ex"></param>
-        /// <returns></returns>
-        public static string GetExceptionInfo(Exception ex)
-        {
-            string result = "";
-            var padding = 0;
-            while (true)
-            {
-                result += ex.Message.PadLeft(ex.Message.Length + padding) + Environment.NewLine;
-
-                if (ex.InnerException == null)
-                    break;
-
-                ex = ex.InnerException;
-                padding += 2;
-            }
-
-            return result;
         }
 
         /// <summary>

@@ -57,7 +57,7 @@ namespace CryptoExchange.Net.UnitTests
             var sub = new SocketConnection(client, socket);
             var rstEvent = new ManualResetEvent(false);
             JToken result = null;
-            sub.AddHandler(SocketSubscription.CreateForIdentifier("TestHandler", true, (connection, data) =>
+            sub.AddSubscription(SocketSubscription.CreateForIdentifier("TestHandler", true, (connection, data) =>
             {
                 result = data;
                 rstEvent.Set();

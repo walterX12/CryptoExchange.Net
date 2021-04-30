@@ -122,7 +122,7 @@ namespace CryptoExchange.Net.Objects
         /// <inheritdoc />
         public override string ToString()
         {
-            return $"{base.ToString()}, Credentials: {(ApiCredentials == null ? "-": "Set")}, BaseAddress: {BaseAddress}, Proxy: {(Proxy == null? "-": Proxy.Host)}";
+            return $"{base.ToString()}, Credentials: {(ApiCredentials == null ? "-" : "Set")}, BaseAddress: {BaseAddress}, Proxy: {(Proxy == null ? "-" : Proxy.Host)}";
         }
     }
 

@@ -13,14 +13,12 @@ namespace CryptoExchange.Net.Sockets
         public IWebsocket CreateWebsocket(Log log, string url)
         {
             return new CryptoExchangeWebSocketClient(log, url);
-            //return new BaseSocket(log, url);
         }
 
         /// <inheritdoc />
         public IWebsocket CreateWebsocket(Log log, string url, IDictionary<string, string> cookies, IDictionary<string, string> headers)
         {
             return new CryptoExchangeWebSocketClient(log, url, cookies, headers);
-            //return new BaseSocket(log, url, cookies, headers);
         }
     }
 }

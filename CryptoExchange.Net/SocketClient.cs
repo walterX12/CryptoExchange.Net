@@ -141,14 +141,14 @@ namespace CryptoExchange.Net
         /// <returns></returns>
         protected virtual async Task<CallResult<UpdateSubscription>> Subscribe<T>(string url, object? request, string? identifier, bool authenticated, Action<T> dataHandler)
         {
-            SocketConnection socket;
-            SocketSubscription handler;
+            SocketConnection socketConnection;
+            SocketSubscription subscription;
             var released = false;
             await semaphoreSlim.WaitAsync().ConfigureAwait(false);
             try
             {
-                socket = GetWebsocket(url, authenticated);
-                handler = AddHandler(request, identifier, true, socket, dataHandler);
+                socketConnection = GetSocketConnection(url, authenticated);
+                subscription = AddSubscription(request, identifier, true, socketConnection, dataHandler);
                 if (SocketCombineTarget == 1)
                 {
                     // Can release early when only a single sub per connection
@@ -156,14 +156,14 @@ namespace CryptoExchange.Net
                     released = true;
                 }
 
-                var needsconnecting = !socket.Connected;
+                var needsConnecting = !socketConnection.Connected;
 
-                var connectResult = await ConnectIfNeeded(socket, authenticated).ConfigureAwait(false);
+                var connectResult = await ConnectIfNeeded(socketConnection, authenticated).ConfigureAwait(false);
                 if (!connectResult)
                     return new CallResult<UpdateSubscription>(null, connectResult.Error);
 
-                if (needsconnecting)
-                    log.Write(LogVerbosity.Debug, $"Socket {socket.Socket.Id} connected to {url} {(request == null ? "": "with request " + JsonConvert.SerializeObject(request))}");
+                if (needsConnecting)
+                    log.Write(LogVerbosity.Debug, $"Socket {socketConnection.Socket.Id} connected to {url} {(request == null ? "": "with request " + JsonConvert.SerializeObject(request))}");
             }
             finally
             {
@@ -173,7 +173,7 @@ namespace CryptoExchange.Net
                     semaphoreSlim.Release();
             }
 
-            if (socket.PausedActivity)
+            if (socketConnection.PausedActivity)
             {
                 log.Write(LogVerbosity.Info, "Socket has been paused, can't subscribe at this moment");
                 return new CallResult<UpdateSubscription>(default, new ServerError("Socket is paused"));
@@ -181,33 +181,33 @@ namespace CryptoExchange.Net
 
             if (request != null)
             {
-                var subResult = await SubscribeAndWait(socket, request, handler).ConfigureAwait(false);
+                var subResult = await SubscribeAndWait(socketConnection, request, subscription).ConfigureAwait(false);
                 if (!subResult)
                 {
-                    await socket.Close(handler).ConfigureAwait(false);
+                    await socketConnection.Close(subscription).ConfigureAwait(false);
                     return new CallResult<UpdateSubscription>(null, subResult.Error);
                 }
             }
             else
             {
-                handler.Confirmed = true;
+                subscription.Confirmed = true;
             }
-            
-            socket.ShouldReconnect = true;
-            return new CallResult<UpdateSubscription>(new UpdateSubscription(socket, handler), null);
+
+            socketConnection.ShouldReconnect = true;
+            return new CallResult<UpdateSubscription>(new UpdateSubscription(socketConnection, subscription), null);
         }
 
         /// <summary>
         /// Sends the subscribe request and waits for a response to that request
         /// </summary>
-        /// <param name="socket">The connection to send the request on</param>
+        /// <param name="socketConnection">The connection to send the request on</param>
         /// <param name="request">The request to send</param>
         /// <param name="subscription">The subscription the request is for</param>
         /// <returns></returns>
-        protected internal virtual async Task<CallResult<bool>> SubscribeAndWait(SocketConnection socket, object request, SocketSubscription subscription)
+        protected internal virtual async Task<CallResult<bool>> SubscribeAndWait(SocketConnection socketConnection, object request, SocketSubscription subscription)
         {
             CallResult<object>? callResult = null;
-            await socket.SendAndWait(request, ResponseTimeout, data => HandleSubscriptionResponse(socket, subscription, request, data, out callResult)).ConfigureAwait(false);
+            await socketConnection.SendAndWait(request, ResponseTimeout, data => HandleSubscriptionResponse(socketConnection, subscription, request, data, out callResult)).ConfigureAwait(false);
 
             if (callResult?.Success == true)
                 subscription.Confirmed = true;
@@ -237,12 +237,12 @@ namespace CryptoExchange.Net
         /// <returns></returns>
         protected virtual async Task<CallResult<T>> Query<T>(string url, object request, bool authenticated)
         {
-            SocketConnection socket;
+            SocketConnection socketConnection;
             var released = false;
             await semaphoreSlim.WaitAsync().ConfigureAwait(false);
             try
             {
-                socket = GetWebsocket(url, authenticated);
+                socketConnection = GetSocketConnection(url, authenticated);
                 if (SocketCombineTarget == 1)
                 {
                     // Can release early when only a single sub per connection
@@ -250,7 +250,7 @@ namespace CryptoExchange.Net
                     released = true;
                 }
 
-                var connectResult = await ConnectIfNeeded(socket, authenticated).ConfigureAwait(false);
+                var connectResult = await ConnectIfNeeded(socketConnection, authenticated).ConfigureAwait(false);
                 if (!connectResult)
                     return new CallResult<T>(default, connectResult.Error);
             }
@@ -262,13 +262,13 @@ namespace CryptoExchange.Net
                     semaphoreSlim.Release();
             }
 
-            if (socket.PausedActivity)
+            if (socketConnection.PausedActivity)
             {
                 log.Write(LogVerbosity.Info, "Socket has been paused, can't send query at this moment");
                 return new CallResult<T>(default, new ServerError("Socket is paused"));
             }
 
-            return await QueryAndWait<T>(socket, request).ConfigureAwait(false);
+            return await QueryAndWait<T>(socketConnection, request).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -382,7 +382,7 @@ namespace CryptoExchange.Net
         }
 
         /// <summary>
-        /// Add a handler for a subscription
+        /// Add a subscription to a connection
         /// </summary>
         /// <typeparam name="T">The type of data the subscription expects</typeparam>
         /// <param name="request">The request of the subscription</param>
@@ -391,9 +391,9 @@ namespace CryptoExchange.Net
         /// <param name="connection">The socket connection the handler is on</param>
         /// <param name="dataHandler">The handler of the data received</param>
         /// <returns></returns>
-        protected virtual SocketSubscription AddHandler<T>(object? request, string? identifier, bool userSubscription, SocketConnection connection, Action<T> dataHandler)
+        protected virtual SocketSubscription AddSubscription<T>(object? request, string? identifier, bool userSubscription, SocketConnection connection, Action<T> dataHandler)
         {
-            void InternalHandler(SocketConnection socketWrapper, JToken data)
+            void InternalHandler(SocketConnection socketConnection, JToken data)
             {
                 if (typeof(T) == typeof(string))
                 {
@@ -411,11 +411,11 @@ namespace CryptoExchange.Net
                 dataHandler(desResult.Data);
             }
 
-            var handler = request == null
+            var subscription = request == null
                 ? SocketSubscription.CreateForIdentifier(identifier!, userSubscription, InternalHandler)
                 : SocketSubscription.CreateForRequest(request, userSubscription, InternalHandler);
-            connection.AddHandler(handler);
-            return handler;
+            connection.AddSubscription(subscription);
+            return subscription;
         }
 
         /// <summary>
@@ -426,9 +426,9 @@ namespace CryptoExchange.Net
         protected void AddGenericHandler(string identifier, Action<SocketConnection, JToken> action)
         {
             genericHandlers.Add(identifier, action);
-            var handler = SocketSubscription.CreateForIdentifier(identifier, false, action);
+            var subscription = SocketSubscription.CreateForIdentifier(identifier, false, action);
             foreach (var connection in sockets.Values)
-                connection.AddHandler(handler);
+                connection.AddSubscription(subscription);
         }
 
         /// <summary>
@@ -437,14 +437,14 @@ namespace CryptoExchange.Net
         /// <param name="address">The address the socket is for</param>
         /// <param name="authenticated">Whether the socket should be authenticated</param>
         /// <returns></returns>
-        protected virtual SocketConnection GetWebsocket(string address, bool authenticated)
+        protected virtual SocketConnection GetSocketConnection(string address, bool authenticated)
         {
             var socketResult = sockets.Where(s => s.Value.Socket.Url.TrimEnd('/') == address.TrimEnd('/') 
-                                                  && (s.Value.Authenticated == authenticated || !authenticated) && s.Value.Connected).OrderBy(s => s.Value.HandlerCount).FirstOrDefault();
+                                                  && (s.Value.Authenticated == authenticated || !authenticated) && s.Value.Connected).OrderBy(s => s.Value.SubscriptionCount).FirstOrDefault();
             var result = socketResult.Equals(default(KeyValuePair<int, SocketConnection>)) ? null : socketResult.Value;
             if (result != null)
             {
-                if (result.HandlerCount < SocketCombineTarget || (sockets.Count >= MaxSocketConnections && sockets.All(s => s.Value.HandlerCount >= SocketCombineTarget)))
+                if (result.SubscriptionCount < SocketCombineTarget || (sockets.Count >= MaxSocketConnections && sockets.All(s => s.Value.SubscriptionCount >= SocketCombineTarget)))
                 {
                     // Use existing socket if it has less than target connections OR it has the least connections and we can't make new
                     return result;
@@ -453,15 +453,15 @@ namespace CryptoExchange.Net
 
             // Create new socket
             var socket = CreateSocket(address);
-            var socketWrapper = new SocketConnection(this, socket);
-            socketWrapper.UnhandledMessage += HandleUnhandledMessage;
+            var socketConnection = new SocketConnection(this, socket);
+            socketConnection.UnhandledMessage += HandleUnhandledMessage;
             foreach (var kvp in genericHandlers)
             {
                 var handler = SocketSubscription.CreateForIdentifier(kvp.Key, false, kvp.Value);
-                socketWrapper.AddHandler(handler);
+                socketConnection.AddSubscription(handler);
             }
 
-            return socketWrapper;
+            return socketConnection;
         }
 
         /// <summary>
@@ -500,7 +500,7 @@ namespace CryptoExchange.Net
             log.Write(LogVerbosity.Debug, "Created new socket for " + address);
 
             if (apiProxy != null)
-                socket.SetProxy(apiProxy.Host, apiProxy.Port);
+                socket.SetProxy(apiProxy);
 
             socket.Timeout = SocketNoDataTimeout;
             socket.DataInterpreterBytes = dataInterpreterBytes;
@@ -577,7 +577,7 @@ namespace CryptoExchange.Net
         /// <returns></returns>
         public virtual async Task UnsubscribeAll()
         {
-            log.Write(LogVerbosity.Debug, $"Closing all {sockets.Sum(s => s.Value.HandlerCount)} subscriptions");
+            log.Write(LogVerbosity.Debug, $"Closing all {sockets.Sum(s => s.Value.SubscriptionCount)} subscriptions");
 
             await Task.Run(async () =>
             {

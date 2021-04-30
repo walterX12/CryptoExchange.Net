@@ -1,5 +1,7 @@
-﻿using System;
+﻿using CryptoExchange.Net.Objects;
+using System;
 using System.Security.Authentication;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace CryptoExchange.Net.Interfaces
@@ -34,6 +36,10 @@ namespace CryptoExchange.Net.Interfaces
         /// Origin
         /// </summary>
         string? Origin { get; set; }
+        /// <summary>
+        /// Encoding to use
+        /// </summary>
+        Encoding? Encoding { get; set; }
         /// <summary>
         /// Reconnecting
         /// </summary>
@@ -88,8 +94,7 @@ namespace CryptoExchange.Net.Interfaces
         /// <summary>
         /// Set proxy
         /// </summary>
-        /// <param name="host"></param>
-        /// <param name="port"></param>
-        void SetProxy(string host, int port);
+        /// <param name="proxy"></param>
+        void SetProxy(ApiProxy proxy);
     }
 }

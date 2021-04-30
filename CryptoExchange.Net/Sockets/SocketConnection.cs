@@ -42,12 +42,12 @@ namespace CryptoExchange.Net.Sockets
         public event Action<JToken>? UnhandledMessage;
 
         /// <summary>
-        /// The amount of handlers
+        /// The amount of subscriptions on this connection
         /// </summary>
-        public int HandlerCount
+        public int SubscriptionCount
         {
-            get { lock (handlersLock)
-                return handlers.Count(h => h.UserSubscription); }
+            get { lock (subscriptionLock)
+                return subscriptions.Count(h => h.UserSubscription); }
         }
 
         /// <summary>
@@ -92,8 +92,8 @@ namespace CryptoExchange.Net.Sockets
         }
 
         private bool pausedActivity;
-        private readonly List<SocketSubscription> handlers;
-        private readonly object handlersLock = new object();
+        private readonly List<SocketSubscription> subscriptions;
+        private readonly object subscriptionLock = new object();
 
         private bool lostTriggered;
         private readonly Log log;
@@ -113,7 +113,7 @@ namespace CryptoExchange.Net.Sockets
 
             pendingRequests = new List<PendingRequest>();
 
-            handlers = new List<SocketSubscription>();
+            subscriptions = new List<SocketSubscription>();
             Socket = socket;
 
             Socket.Timeout = client.SocketNoDataTimeout;
@@ -185,13 +185,13 @@ namespace CryptoExchange.Net.Sockets
         }
 
         /// <summary>
-        /// Add handler
+        /// Add subscription
         /// </summary>
-        /// <param name="handler"></param>
-        public void AddHandler(SocketSubscription handler)
+        /// <param name="subscription"></param>
+        public void AddSubscription(SocketSubscription subscription)
         {
-            lock(handlersLock)
-                handlers.Add(handler);
+            lock(subscriptionLock)
+                subscriptions.Add(subscription);
         }
 
         private bool HandleData(JToken tokenData)
@@ -201,26 +201,26 @@ namespace CryptoExchange.Net.Sockets
             { 
                 var handled = false;
                 var sw = Stopwatch.StartNew();
-                lock (handlersLock)
+                lock (subscriptionLock)
                 {
-                    foreach (var handler in handlers.ToList())
+                    foreach (var subscription in subscriptions.ToList())
                     {
-                        currentSubscription = handler;
-                        if (handler.Request == null)
+                        currentSubscription = subscription;
+                        if (subscription.Request == null)
                         {
-                            if (socketClient.MessageMatchesHandler(tokenData, handler.Identifier!))
+                            if (socketClient.MessageMatchesHandler(tokenData, subscription.Identifier!))
                             {
                                 handled = true;
-                                handler.MessageHandler(this, tokenData);
+                                subscription.MessageHandler(this, tokenData);
                             }
                         }
                         else
                         {
-                            if (socketClient.MessageMatchesHandler(tokenData, handler.Request))
+                            if (socketClient.MessageMatchesHandler(tokenData, subscription.Request))
                             {
                                 handled = true;
                                 tokenData = socketClient.ProcessTokenData(tokenData);
-                                handler.MessageHandler(this, tokenData);
+                                subscription.MessageHandler(this, tokenData);
                             }
                         }
                     }
@@ -236,7 +236,7 @@ namespace CryptoExchange.Net.Sockets
             }
             catch (Exception ex)
             {
-                log.Write(LogVerbosity.Error, $"Socket {Socket.Id} Exception during message processing\r\nException: {ex}\r\nData: {tokenData}");
+                log.Write(LogVerbosity.Error, $"Socket {Socket.Id} Exception during message processing\r\nException: {ex.ToLogString()}\r\nData: {tokenData}");
                 currentSubscription?.InvokeExceptionHandler(ex);
                 return false;
             }
@@ -370,15 +370,15 @@ namespace CryptoExchange.Net.Sockets
                 log.Write(LogVerbosity.Debug, "Authentication succeeded on reconnected socket.");
             }
 
-            List<SocketSubscription> handlerList;
-            lock (handlersLock)
-                handlerList = handlers.Where(h => h.Request != null).ToList();
+            List<SocketSubscription> subscriptionList;
+            lock (subscriptionLock)
+                subscriptionList = subscriptions.Where(h => h.Request != null).ToList();
 
             var success = true;
             var taskList = new List<Task>();
-            foreach (var handler in handlerList)
+            foreach (var subscription in subscriptionList)
             {
-                var task = socketClient.SubscribeAndWait(this, handler.Request!, handler).ContinueWith(t =>
+                var task = socketClient.SubscribeAndWait(this, subscription.Request!, subscription).ContinueWith(t =>
                 {
                     if (!t.Result)
                         success = false;
@@ -422,15 +422,15 @@ namespace CryptoExchange.Net.Sockets
             if (subscription.Confirmed)
                 await socketClient.Unsubscribe(this, subscription).ConfigureAwait(false);
 
-            var shouldCloseWrapper = false;
-            lock (handlersLock)
-                shouldCloseWrapper = handlers.Count(r => r.UserSubscription && subscription != r) == 0;
+            var shouldCloseConnection = false;
+            lock (subscriptionLock)
+                shouldCloseConnection = subscriptions.Count(r => r.UserSubscription && subscription != r) == 0;
 
-            if (shouldCloseWrapper)
+            if (shouldCloseConnection)
                 await Close().ConfigureAwait(false);
 
-            lock (handlersLock)            
-                handlers.Remove(subscription);            
+            lock (subscriptionLock)
+                subscriptions.Remove(subscription);            
         }
     }
 

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Security;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -334,6 +335,33 @@ namespace CryptoExchange.Net
         {
             if (value == null || !value.Any())
                 throw new ArgumentException($"No values provided for parameter {argumentName}", argumentName);
+        }
+
+        /// <summary>
+        /// Format an exception and inner exception to a readable string
+        /// </summary>
+        /// <param name="exception"></param>
+        /// <returns></returns>
+        public static string ToLogString(this Exception exception)
+        {
+            var message = new StringBuilder();
+            var indent = 0;
+            while (exception != null)
+            {
+                for (var i = 0; i < indent; i++)
+                    message.Append(" ");
+                message.Append(exception.GetType().Name);
+                message.Append(" - ");
+                message.AppendLine(exception.Message);
+                for (var i = 0; i < indent; i++)
+                    message.Append(" ");
+                message.AppendLine(exception.StackTrace);
+
+                indent += 2;
+                exception = exception.InnerException;
+            }
+
+            return message.ToString();
         }
     }
 }

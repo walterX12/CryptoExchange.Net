@@ -15,7 +15,7 @@ namespace CryptoExchange.Net.Logging
         /// <inheritdoc />
         public override void WriteLine(string value)
         {
-            Debug.WriteLine(value);
+            Trace.WriteLine(value);
         }
     }
 }

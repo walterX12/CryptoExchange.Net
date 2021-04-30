@@ -1,10 +1,10 @@
 ﻿using CryptoExchange.Net.Interfaces;
 using CryptoExchange.Net.Logging;
+using CryptoExchange.Net.Objects;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
 using System.Security.Authentication;
@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace CryptoExchange.Net.Sockets
 {
-    internal class CryptoExchangeWebSocketClient : IWebsocket
+    public class CryptoExchangeWebSocketClient : IWebsocket
     {
         internal static int lastStreamId;
         private static readonly object streamIdLock = new object();
@@ -22,6 +22,7 @@ namespace CryptoExchange.Net.Sockets
         private ClientWebSocket _socket;
         private Task? _sendTask;
         private Task? _receiveTask;
+        private Task? _timeoutTask;
         private AutoResetEvent _sendEvent;
         private ConcurrentQueue<byte[]> _sendBuffer;
         private readonly IDictionary<string, string> cookies;
@@ -61,14 +62,24 @@ namespace CryptoExchange.Net.Sockets
 
         public string Url { get; }
 
-        public WebSocketState SocketState => _socket.State;
-
         public bool IsClosed => _socket.State == WebSocketState.Closed;
 
         public bool IsOpen => _socket.State == WebSocketState.Open;
 
         public SslProtocols SSLProtocols { get; set; } //TODO
-        public TimeSpan Timeout { get; set; } // TODO
+
+        private Encoding _encoding = Encoding.UTF8;
+        public Encoding? Encoding
+        {
+            get => _encoding;
+            set
+            {
+                if(value != null)
+                    _encoding = value;
+            }
+        }
+
+        public TimeSpan Timeout { get; set; }
 
         /// <summary>
         /// On close
@@ -134,6 +145,77 @@ namespace CryptoExchange.Net.Sockets
             CreateSocket();
         }
 
+        public virtual void SetProxy(ApiProxy proxy)
+        {
+            _socket.Options.Proxy = new WebProxy(proxy.Host, proxy.Port);
+            if (proxy.Login != null)
+                _socket.Options.Proxy.Credentials = new NetworkCredential(proxy.Login, proxy.Password);
+        }
+
+        public virtual async Task<bool> Connect()
+        {
+            log.Write(LogVerbosity.Debug, $"Socket {Id} connecting");
+            try
+            {
+                using CancellationTokenSource tcs = new CancellationTokenSource(TimeSpan.FromSeconds(10));                
+                await _socket.ConnectAsync(new Uri(Url), default).ConfigureAwait(false);
+                
+                Handle(openHandlers);
+            }
+            catch (Exception e)
+            {
+                log.Write(LogVerbosity.Debug, $"Socket {Id} connection failed: " + e.Message);
+                return false;
+            }
+
+            log.Write(LogVerbosity.Debug, $"Socket {Id} connected");
+            _sendTask = Task.Run(async () => await SendLoop().ConfigureAwait(false));
+            _receiveTask = ReceiveLoop();
+            if (Timeout != default)
+                _timeoutTask = Task.Run(CheckTimeout);
+            return true;
+        }
+
+        public virtual void Send(string data)
+        {
+            if (_socket.State != WebSocketState.Open)
+                throw new InvalidOperationException("Can't send data when socket is not connected");
+
+            var bytes = _encoding.GetBytes(data);
+            _sendBuffer.Enqueue(bytes);
+            _sendEvent.Set();
+        }
+
+        public virtual async Task Close()
+        {
+            log.Write(LogVerbosity.Debug, $"Socket {Id} closing");
+            await _socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", default).ConfigureAwait(false);
+            _ctsSource.Cancel();
+            _sendEvent.Set();
+            await Task.WhenAll(_sendTask, _receiveTask, _timeoutTask).ConfigureAwait(false);
+            Handle(closeHandlers);
+            log.Write(LogVerbosity.Debug, $"Socket {Id} closed");
+        }
+        
+        public void Dispose()
+        {
+            log.Write(LogVerbosity.Debug, $"Socket {Id} disposing");
+            _socket.Dispose();
+            _ctsSource.Dispose();
+
+            errorHandlers.Clear();
+            openHandlers.Clear();
+            closeHandlers.Clear();
+            messageHandlers.Clear();
+        }
+
+        public void Reset()
+        {
+            log.Write(LogVerbosity.Debug, $"Socket {Id} resetting");
+            _ctsSource = new CancellationTokenSource();
+            CreateSocket();
+        }
+        
         private void CreateSocket()
         {
             var cookieContainer = new CookieContainer();
@@ -149,7 +231,6 @@ namespace CryptoExchange.Net.Sockets
 
         private async Task SendLoop()
         {
-            log.Write(LogVerbosity.Debug, "Starting send loop");
             while (true)
             {
                 _sendEvent.WaitOne();
@@ -162,126 +243,166 @@ namespace CryptoExchange.Net.Sockets
 
                 try
                 {
-                    await _socket.SendAsync(new ArraySegment<byte>(data, 0, data.Length), WebSocketMessageType.Text, true, _ctsSource.Token);
+                    await _socket.SendAsync(new ArraySegment<byte>(data, 0, data.Length), WebSocketMessageType.Text, true, _ctsSource.Token).ConfigureAwait(false);
                 }
                 catch (TaskCanceledException)
                 {
                     // cancelled
                 }
+                catch (WebSocketException wse)
+                {
+                    // Connection closed unexpectedly                        
+                    _ctsSource.Cancel();
+                    await _receiveTask!.ConfigureAwait(false);
+                    Handle(errorHandlers, wse);
+                    Handle(closeHandlers);
+                    break;
+                }
             }
-            log.Write(LogVerbosity.Debug, "Ended send loop");
         }
 
         private async Task ReceiveLoop()
         {
-            log.Write(LogVerbosity.Debug, "Starting receive loop");
-            var buffer = new ArraySegment<byte>(new byte[2048]);
+            var buffer = new ArraySegment<byte>(new byte[4096]);
             while (true)
             {
-                var memoryStream = new MemoryStream();
+                if (_ctsSource.IsCancellationRequested)
+                    break;
+
+                MemoryStream? memoryStream = null;
                 WebSocketReceiveResult? receiveResult = null;
-                while (true) 
+                bool multiPartMessage = false;
+                while (true)
                 {
                     try
                     {
-                        receiveResult = await _socket.ReceiveAsync(buffer, _ctsSource.Token);
+                        receiveResult = await _socket.ReceiveAsync(buffer, _ctsSource.Token).ConfigureAwait(false);
                     }
                     catch (TaskCanceledException)
                     {
                         // Cancelled
                         break;
                     }
-                    catch(WebSocketException wse)
+                    catch (WebSocketException wse)
                     {
                         // Connection closed unexpectedly                        
                         _ctsSource.Cancel();
                         _sendEvent.Set();
-                        await _sendTask;
+                        await _sendTask!.ConfigureAwait(false);
+                        Handle(errorHandlers, wse);
                         Handle(closeHandlers);
                         break;
                     }
 
-                    await memoryStream.WriteAsync(buffer.Array, buffer.Offset, receiveResult.Count);
-                    if (receiveResult.EndOfMessage)
+                    if (!receiveResult.EndOfMessage)
+                    {
+                        // We received data, but it is not complete, write it to a memory stream
+                        multiPartMessage = true;
+                        if (memoryStream == null)
+                            memoryStream = new MemoryStream();
+                        await memoryStream.WriteAsync(buffer.Array, buffer.Offset, receiveResult.Count).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        if (!multiPartMessage)
+                            // Received a complete message and it's not multi part
+                            HandleMessage(buffer.Array, buffer.Offset, receiveResult.Count, receiveResult.MessageType);
+                        else
+                            // Received the end of a multipart message, write to memory stream
+                            await memoryStream!.WriteAsync(buffer.Array, buffer.Offset, receiveResult.Count).ConfigureAwait(false);
                         break;
+                    }
                 }
 
-                if (receiveResult == null)
+                if (receiveResult?.MessageType == WebSocketMessageType.Close)
+                    // Received close message
                     break;
 
-                if (receiveResult.MessageType == WebSocketMessageType.Close || _ctsSource.IsCancellationRequested)
+                if (receiveResult == null || _ctsSource.IsCancellationRequested)
+                    // Error during receiving or cancellation requested, stop.
                     break;
 
-                memoryStream.Seek(0, SeekOrigin.Begin);
-                if (receiveResult.MessageType == WebSocketMessageType.Text) 
+                if (multiPartMessage)
                 {
-                    var reader = new StreamReader(memoryStream, Encoding.UTF8);
-                    Handle(messageHandlers, await reader.ReadToEndAsync());
+                    // Reassemble complete message from memory stream
+                    HandleMessage(memoryStream!.ToArray(), 0, (int)memoryStream.Length, receiveResult.MessageType);
+                    memoryStream.Dispose();
                 }
             }
-            log.Write(LogVerbosity.Debug, "Ended receive loop");
         }
 
-        public async Task Close()
+        private void HandleMessage(byte[] data, int offset, int count, WebSocketMessageType messageType)
         {
-            log.Write(LogVerbosity.Debug, "Starting close");
-            await _socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", default);
-            _ctsSource.Cancel();
-            _sendEvent.Set();
-            await Task.WhenAll(_sendTask, _receiveTask);
-            Handle(closeHandlers);
-            log.Write(LogVerbosity.Debug, "Ended close");
-        }
+            string strData;
+            if (messageType == WebSocketMessageType.Binary)
+            {
+                if (DataInterpreterBytes == null)
+                    throw new Exception("Byte interpreter not set while receiving byte data");
 
-        public async Task<bool> Connect()
-        {
-            log.Write(LogVerbosity.Debug, "Starting connect");
+                try
+                {
+                    strData = DataInterpreterBytes(data);
+                }
+                catch(Exception e)
+                {
+                    log.Write(LogVerbosity.Error, $"Socket {Id} unhandled exception during byte data interpretation: " + e.ToLogString());
+                    return;
+                }
+            }
+            else
+                strData = _encoding.GetString(data, offset, count);
+
+            if (DataInterpreterString != null)
+            {
+                try
+                {
+                    strData = DataInterpreterString(strData);
+                }
+                catch(Exception e)
+                {
+                    log.Write(LogVerbosity.Error, $"Socket {Id} unhandled exception during byte data interpretation: " + e.ToLogString());
+                    return;
+                }
+            }
+
             try
             {
-                await _socket.ConnectAsync(new Uri(Url), default).ConfigureAwait(false);
-                Handle(openHandlers);
+                Handle(messageHandlers, strData);
             }
             catch(Exception e)
             {
-                // TODO
-                log.Write(LogVerbosity.Debug, "Connect failed: " + e.Message);
-                return false;
+                log.Write(LogVerbosity.Error, $"Socket {Id} unhandled exception during message processing: " + e.ToLogString());
+                return;
             }
-
-            log.Write(LogVerbosity.Debug, "Connected");
-            _sendTask = Task.Run(async () => await SendLoop());
-            _receiveTask = ReceiveLoop();
-            return true;
         }
 
-        public void Dispose()
+        /// <summary>
+        /// Checks if timed out
+        /// </summary>
+        /// <returns></returns>
+        protected async Task CheckTimeout()
         {
-            log.Write(LogVerbosity.Debug, "Starting dispose");
-            _socket.Dispose();
-            log.Write(LogVerbosity.Debug, "Ended dispose");
-        }
+            while (true)
+            {
+                if (_socket.State != WebSocketState.Open)
+                    return;
 
-        public void Reset()
-        {
-            log.Write(LogVerbosity.Debug, "Starting reset");
-            _ctsSource = new CancellationTokenSource();
-            CreateSocket();
-            log.Write(LogVerbosity.Debug, "Ended reset");
-        }
-
-        public void Send(string data)
-        {
-            if (_socket.State != WebSocketState.Open)
-                throw new InvalidOperationException("Can't send data when socket is not connected");
-
-            var bytes = Encoding.UTF8.GetBytes(data);
-            _sendBuffer.Enqueue(bytes);
-            _sendEvent.Set();
-        }
-
-        public void SetProxy(string host, int port) // Credentials?
-        {
-            _socket.Options.Proxy = new WebProxy(host, port);
+                if (DateTime.UtcNow - LastActionTime > Timeout)
+                {
+                    log.Write(LogVerbosity.Warning, $"No data received for {Timeout}, reconnecting socket");
+                    _ = Close().ConfigureAwait(false);
+                    return;
+                }
+                try
+                {
+                    await Task.Delay(500, _ctsSource.Token).ConfigureAwait(false);
+                }
+                catch(TaskCanceledException)
+                {
+                    // cancelled
+                    return;
+                }
+            }
         }
 
         /// <summary>

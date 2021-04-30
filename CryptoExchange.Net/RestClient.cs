@@ -271,7 +271,7 @@ namespace CryptoExchange.Net
             }
             catch (HttpRequestException requestException)
             {
-                var exceptionInfo = GetExceptionInfo(requestException);
+                var exceptionInfo = requestException.ToLogString();
                 log.Write(LogVerbosity.Warning, $"[{request.RequestId}] Request exception: " + exceptionInfo);
                 return new WebCallResult<T>(null, null, default, new WebError(exceptionInfo));
             }

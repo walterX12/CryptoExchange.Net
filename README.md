@@ -290,6 +290,12 @@ static async Task GetExchangeData(IExchangeClient client)
 ````
 
 ## Release notes
+* Version 4.0.0-beta1 - 30 apr 2021
+    * Removed Websocket4Net dependency
+    * Added custom ClientWebSocket implementation
+    * Renamed handler -> subscription internally
+    * Renamed socket -> socketConenction when type is socketConnection
+
 * Version 3.9.0 - 28 apr 2021
     * Added optional JsonSerializer parameter to SendRequest to use during deserialization
     * Fix for unhandled message warning when unsubscribing a socket subscription

@@ -239,7 +239,7 @@ namespace CryptoExchange.Net
                         var parseResult = ValidateJson(data);
                         if (!parseResult.Success)
                             return WebCallResult<T>.CreateErrorResult(response.StatusCode, response.ResponseHeaders, parseResult.Error!);
-                        var error = await TryParseError(parseResult.Data);
+                        var error = await TryParseError(parseResult.Data).ConfigureAwait(false);
                         if (error != null)
                             return WebCallResult<T>.CreateErrorResult(response.StatusCode, response.ResponseHeaders, error);
 

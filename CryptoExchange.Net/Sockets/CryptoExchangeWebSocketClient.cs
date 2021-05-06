@@ -190,7 +190,7 @@ namespace CryptoExchange.Net.Sockets
         public virtual async Task Close()
         {
             log.Write(LogVerbosity.Debug, $"Socket {Id} closing");
-            await CloseInternal(true, true, true);
+            await CloseInternal(true, true, true).ConfigureAwait(false);
         }
         
         private async Task CloseInternal(bool closeSocket, bool waitSend, bool waitReceive)
@@ -273,7 +273,7 @@ namespace CryptoExchange.Net.Sockets
                 {
                     // Connection closed unexpectedly                        
                     Handle(errorHandlers, wse);
-                    await CloseInternal(false, false, true);
+                    await CloseInternal(false, false, true).ConfigureAwait(false);
                     break;
                 }
             }
@@ -305,14 +305,14 @@ namespace CryptoExchange.Net.Sockets
                     {
                         // Connection closed unexpectedly                        
                         Handle(errorHandlers, wse);
-                        await CloseInternal(false, true, false);
+                        await CloseInternal(false, true, false).ConfigureAwait(false);
                         break;
                     }
 
                     if (receiveResult.MessageType == WebSocketMessageType.Close)
                     {
                         // Connection closed unexpectedly        
-                        await CloseInternal(true, true, true);
+                        await CloseInternal(true, true, true).ConfigureAwait(false);
                         break;
                     }
 

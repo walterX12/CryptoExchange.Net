@@ -290,6 +290,10 @@ static async Task GetExchangeData(IExchangeClient client)
 ````
 
 ## Release notes
+* Version 4.0.0-beta4 - 06 mei 2021
+    * Added analyzers
+    * Fixed some warnings
+
 * Version 4.0.0-beta3 - 30 Apr 2021
     * Updated socket closing
 

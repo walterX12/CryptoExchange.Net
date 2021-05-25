@@ -60,7 +60,7 @@ namespace CryptoExchange.Net
         /// <summary>
         /// Generic handlers
         /// </summary>
-        protected Dictionary<string, Action<SocketConnection, JToken>> genericHandlers = new Dictionary<string, Action<SocketConnection, JToken>>();
+        protected Dictionary<string, Action<MessageEvent>> genericHandlers = new Dictionary<string, Action<MessageEvent>>();
         /// <summary>
         /// Periodic task
         /// </summary>
@@ -124,7 +124,7 @@ namespace CryptoExchange.Net
         /// <param name="authenticated">If the subscription should be authenticated</param>
         /// <param name="dataHandler">The handler of update data</param>
         /// <returns></returns>
-        protected virtual Task<CallResult<UpdateSubscription>> Subscribe<T>(object? request, string? identifier, bool authenticated, Action<T> dataHandler)
+        protected virtual Task<CallResult<UpdateSubscription>> Subscribe<T>(object? request, string? identifier, bool authenticated, Action<DataEvent<T>> dataHandler)
         {
             return Subscribe(BaseAddress, request, identifier, authenticated, dataHandler);
         }
@@ -139,7 +139,7 @@ namespace CryptoExchange.Net
         /// <param name="authenticated">If the subscription should be authenticated</param>
         /// <param name="dataHandler">The handler of update data</param>
         /// <returns></returns>
-        protected virtual async Task<CallResult<UpdateSubscription>> Subscribe<T>(string url, object? request, string? identifier, bool authenticated, Action<T> dataHandler)
+        protected virtual async Task<CallResult<UpdateSubscription>> Subscribe<T>(string url, object? request, string? identifier, bool authenticated, Action<DataEvent<T>> dataHandler)
         {
             SocketConnection socketConnection;
             SocketSubscription subscription;
@@ -391,24 +391,25 @@ namespace CryptoExchange.Net
         /// <param name="connection">The socket connection the handler is on</param>
         /// <param name="dataHandler">The handler of the data received</param>
         /// <returns></returns>
-        protected virtual SocketSubscription AddSubscription<T>(object? request, string? identifier, bool userSubscription, SocketConnection connection, Action<T> dataHandler)
+        protected virtual SocketSubscription AddSubscription<T>(object? request, string? identifier, bool userSubscription, SocketConnection connection, Action<DataEvent<T>> dataHandler)
         {
-            void InternalHandler(SocketConnection socketConnection, JToken data)
+            void InternalHandler(MessageEvent messageEvent)
             {
                 if (typeof(T) == typeof(string))
                 {
-                    dataHandler((T) Convert.ChangeType(data.ToString(), typeof(T)));
+                    var stringData = (T)Convert.ChangeType(messageEvent.OriginalData, typeof(T));
+                    dataHandler(new DataEvent<T>(stringData, null, OutputOriginalData ? messageEvent.OriginalData : null, messageEvent.ReceivedTimestamp));
                     return;
                 }
 
-                var desResult = Deserialize<T>(data, false);
+                var desResult = Deserialize<T>(messageEvent.JsonData, false);
                 if (!desResult)
                 {
                     log.Write(LogVerbosity.Warning, $"Failed to deserialize data into type {typeof(T)}: {desResult.Error}");
                     return;
                 }
 
-                dataHandler(desResult.Data);
+                dataHandler(new DataEvent<T>(desResult.Data, null, OutputOriginalData ? messageEvent.OriginalData : null, messageEvent.ReceivedTimestamp));
             }
 
             var subscription = request == null
@@ -423,7 +424,7 @@ namespace CryptoExchange.Net
         /// </summary>
         /// <param name="identifier">The name of the request handler. Needs to be unique</param>
         /// <param name="action">The action to execute when receiving a message for this handler (checked by <see cref="MessageMatchesHandler(Newtonsoft.Json.Linq.JToken,string)"/>)</param>
-        protected void AddGenericHandler(string identifier, Action<SocketConnection, JToken> action)
+        protected void AddGenericHandler(string identifier, Action<MessageEvent> action)
         {
             genericHandlers.Add(identifier, action);
             var subscription = SocketSubscription.CreateForIdentifier(identifier, false, action);

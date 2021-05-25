@@ -171,7 +171,7 @@ namespace CryptoExchange.Net.Sockets
 
             log.Write(LogVerbosity.Debug, $"Socket {Id} connected");
             _sendTask = Task.Run(async () => await SendLoop().ConfigureAwait(false));
-            _receiveTask = ReceiveLoop();
+            _receiveTask = Task.Run(ReceiveLoop);
             if (Timeout != default)
                 _timeoutTask = Task.Run(CheckTimeout);
             return true;
@@ -246,6 +246,7 @@ namespace CryptoExchange.Net.Sockets
             foreach (var header in headers)
                 _socket.Options.SetRequestHeader(header.Key, header.Value);
             _socket.Options.KeepAliveInterval = TimeSpan.FromSeconds(10);
+            _socket.Options.SetBuffer(1048576 * 5, 1048576 * 5);
         }
 
         private async Task SendLoop()
@@ -282,6 +283,7 @@ namespace CryptoExchange.Net.Sockets
         private async Task ReceiveLoop()
         {
             var buffer = new ArraySegment<byte>(new byte[4096]);
+            var received = 0;
             while (true)
             {
                 if (_closing)
@@ -295,6 +297,7 @@ namespace CryptoExchange.Net.Sockets
                     try
                     {
                         receiveResult = await _socket.ReceiveAsync(buffer, _ctsSource.Token).ConfigureAwait(false);
+                        received += receiveResult.Count;
                     }
                     catch (TaskCanceledException)
                     {
@@ -303,7 +306,7 @@ namespace CryptoExchange.Net.Sockets
                     }
                     catch (WebSocketException wse)
                     {
-                        // Connection closed unexpectedly                        
+                        // Connection closed unexpectedly        
                         Handle(errorHandlers, wse);
                         await CloseInternal(false, true, false).ConfigureAwait(false);
                         break;

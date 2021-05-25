@@ -23,6 +23,11 @@ namespace CryptoExchange.Net.Objects
         /// </summary>
         public List<TextWriter> LogWriters { get; set; } = new List<TextWriter> { new DebugTextWriter() };
 
+        /// <summary>
+        /// If true, the CallResult and DataEvent object will also contain the originally received json data in the OriginalDaa property
+        /// </summary>
+        public bool OutputOriginalData { get; set; } = false;
+
         /// <inheritdoc />
         public override string ToString()
         {

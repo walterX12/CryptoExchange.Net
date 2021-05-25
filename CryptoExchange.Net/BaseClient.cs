@@ -44,6 +44,10 @@ namespace CryptoExchange.Net
         /// Should check objects for missing properties based on the model and the received JSON
         /// </summary>
         public bool ShouldCheckObjects { get; set; }
+        /// <summary>
+        /// If true, the CallResult and DataEvent objects will also contain the originally received json data in the OriginalDaa property
+        /// </summary>
+        public bool OutputOriginalData { get; private set; }
 
         /// <summary>
         /// The last used id
@@ -79,6 +83,7 @@ namespace CryptoExchange.Net
             log.Level = options.LogVerbosity;
 
             ClientName = clientName;
+            OutputOriginalData = options.OutputOriginalData;
             BaseAddress = options.BaseAddress;
             apiProxy = options.Proxy;
 
@@ -229,11 +234,14 @@ namespace CryptoExchange.Net
             try
             {
                 using var reader = new StreamReader(stream, Encoding.UTF8, false, 512, true);
-                if (log.Level == LogVerbosity.Debug)
+                if (OutputOriginalData || log.Level == LogVerbosity.Debug)
                 {
                     var data = await reader.ReadToEndAsync().ConfigureAwait(false);
                     log.Write(LogVerbosity.Debug, $"{(requestId != null ? $"[{requestId}] ": "")}Response received{(elapsedMilliseconds != null ? $" in {elapsedMilliseconds}" : " ")}ms: {data}");
-                    return Deserialize<T>(data, null, serializer, requestId);
+                    var result = Deserialize<T>(data, null, serializer, requestId);
+                    if(OutputOriginalData)
+                        result.OriginalData = data;
+                    return result;
                 }
                 
                 using var jsonReader = new JsonTextReader(reader);

@@ -57,9 +57,9 @@ namespace CryptoExchange.Net.UnitTests
             var sub = new SocketConnection(client, socket);
             var rstEvent = new ManualResetEvent(false);
             JToken result = null;
-            sub.AddSubscription(SocketSubscription.CreateForIdentifier("TestHandler", true, (connection, data) =>
+            sub.AddSubscription(SocketSubscription.CreateForIdentifier("TestHandler", true, (messageEvent) =>
             {
-                result = data;
+                result = messageEvent.JsonData;
                 rstEvent.Set();
             }));
             client.ConnectSocketSub(sub);
@@ -71,7 +71,35 @@ namespace CryptoExchange.Net.UnitTests
             // assert
             Assert.IsTrue((int)result["property"] == 123);
         }
-        
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void SocketMessages_Should_ContainOriginalDataIfEnabled(bool enabled)
+        {
+            // arrange
+            var client = new TestSocketClient(new SocketClientOptions("") { ReconnectInterval = TimeSpan.Zero, LogVerbosity = LogVerbosity.Debug, OutputOriginalData = enabled });
+            var socket = client.CreateSocket();
+            socket.ShouldReconnect = true;
+            socket.CanConnect = true;
+            socket.DisconnectTime = DateTime.UtcNow;
+            var sub = new SocketConnection(client, socket);
+            var rstEvent = new ManualResetEvent(false);
+            string original = null;
+            sub.AddSubscription(SocketSubscription.CreateForIdentifier("TestHandler", true, (messageEvent) =>
+            {
+                original = messageEvent.OriginalData;
+                rstEvent.Set();
+            }));
+            client.ConnectSocketSub(sub);
+
+            // act
+            socket.InvokeMessage("{\"property\": 123}");
+            rstEvent.WaitOne(1000);
+
+            // assert
+            Assert.IsTrue(original == (enabled ? "{\"property\": 123}" : null));
+        }
+
         [TestCase]
         public void DisconnectedSocket_Should_Reconnect()
         {
@@ -109,7 +137,7 @@ namespace CryptoExchange.Net.UnitTests
             socket.CanConnect = true;
             var sub = new SocketConnection(client, socket);
             client.ConnectSocketSub(sub);
-            var ups = new UpdateSubscription(sub, SocketSubscription.CreateForIdentifier("Test", true, (d, a) => {}));
+            var ups = new UpdateSubscription(sub, SocketSubscription.CreateForIdentifier("Test", true, (e) => {}));
 
             // act
             client.Unsubscribe(ups).Wait();

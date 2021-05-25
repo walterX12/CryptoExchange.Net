@@ -139,6 +139,7 @@ namespace CryptoExchange.Net.Sockets
         
         private void ProcessMessage(string data)
         {
+            var timestamp = DateTime.UtcNow;
             log.Write(LogVerbosity.Debug, $"Socket {Socket.Id} received data: " + data);
             if (string.IsNullOrEmpty(data)) return;
 
@@ -151,6 +152,7 @@ namespace CryptoExchange.Net.Sockets
                     return;
             }
 
+            var messageEvent = new MessageEvent(this, tokenData, socketClient.OutputOriginalData ? data: null, timestamp);
             var handledResponse = false;
             PendingRequest[] requests;
             lock(pendingRequests)
@@ -176,7 +178,7 @@ namespace CryptoExchange.Net.Sockets
                 }
             }
             
-            if (!HandleData(tokenData) && !handledResponse)
+            if (!HandleData(messageEvent) && !handledResponse)
             {
                 if (!socketClient.UnhandledMessageExpected)
                     log.Write(LogVerbosity.Warning, $"Socket {Socket.Id} Message not handled: " + tokenData);
@@ -194,7 +196,7 @@ namespace CryptoExchange.Net.Sockets
                 subscriptions.Add(subscription);
         }
 
-        private bool HandleData(JToken tokenData)
+        private bool HandleData(MessageEvent messageEvent)
         {
             SocketSubscription? currentSubscription = null;
             try
@@ -208,19 +210,19 @@ namespace CryptoExchange.Net.Sockets
                         currentSubscription = subscription;
                         if (subscription.Request == null)
                         {
-                            if (socketClient.MessageMatchesHandler(tokenData, subscription.Identifier!))
+                            if (socketClient.MessageMatchesHandler(messageEvent.JsonData, subscription.Identifier!))
                             {
                                 handled = true;
-                                subscription.MessageHandler(this, tokenData);
+                                subscription.MessageHandler(messageEvent);
                             }
                         }
                         else
                         {
-                            if (socketClient.MessageMatchesHandler(tokenData, subscription.Request))
+                            if (socketClient.MessageMatchesHandler(messageEvent.JsonData, subscription.Request))
                             {
                                 handled = true;
-                                tokenData = socketClient.ProcessTokenData(tokenData);
-                                subscription.MessageHandler(this, tokenData);
+                                messageEvent.JsonData = socketClient.ProcessTokenData(messageEvent.JsonData);
+                                subscription.MessageHandler(messageEvent);
                             }
                         }
                     }
@@ -236,7 +238,7 @@ namespace CryptoExchange.Net.Sockets
             }
             catch (Exception ex)
             {
-                log.Write(LogVerbosity.Error, $"Socket {Socket.Id} Exception during message processing\r\nException: {ex.ToLogString()}\r\nData: {tokenData}");
+                log.Write(LogVerbosity.Error, $"Socket {Socket.Id} Exception during message processing\r\nException: {ex.ToLogString()}\r\nData: {messageEvent.JsonData}");
                 currentSubscription?.InvokeExceptionHandler(ex);
                 return false;
             }

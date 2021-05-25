@@ -244,7 +244,7 @@ namespace CryptoExchange.Net
                             return WebCallResult<T>.CreateErrorResult(response.StatusCode, response.ResponseHeaders, error);
 
                         var deserializeResult = Deserialize<T>(parseResult.Data, null, deserializer, request.RequestId);
-                        return new WebCallResult<T>(response.StatusCode, response.ResponseHeaders, deserializeResult.Data, deserializeResult.Error);
+                        return new WebCallResult<T>(response.StatusCode, response.ResponseHeaders, OutputOriginalData ? data: null, deserializeResult.Data, deserializeResult.Error);
                     }
                     else
                     {

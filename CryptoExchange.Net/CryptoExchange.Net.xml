@@ -234,6 +234,11 @@
             Should check objects for missing properties based on the model and the received JSON
             </summary>
         </member>
+        <member name="P:CryptoExchange.Net.BaseClient.OutputOriginalData">
+            <summary>
+            If true, the CallResult and DataEvent objects will also contain the originally received json data in the OriginalDaa property
+            </summary>
+        </member>
         <member name="F:CryptoExchange.Net.BaseClient.lastId">
             <summary>
             The last used id
@@ -1683,6 +1688,11 @@
             The data returned by the call
             </summary>
         </member>
+        <member name="P:CryptoExchange.Net.Objects.CallResult`1.OriginalData">
+            <summary>
+            The original data returned by the call, only available when `OutputOriginalData` is set to `true` in the client options
+            </summary>
+        </member>
         <member name="M:CryptoExchange.Net.Objects.CallResult`1.#ctor(`0,CryptoExchange.Net.Objects.Error)">
             <summary>
             ctor
@@ -1775,18 +1785,22 @@
             <param name="data"></param>
             <param name="error"></param>
         </member>
-        <member name="M:CryptoExchange.Net.Objects.WebCallResult`1.#ctor(CryptoExchange.Net.Objects.WebCallResult{`0})">
+        <member name="M:CryptoExchange.Net.Objects.WebCallResult`1.#ctor(System.Nullable{System.Net.HttpStatusCode},System.Collections.Generic.IEnumerable{System.Collections.Generic.KeyValuePair{System.String,System.Collections.Generic.IEnumerable{System.String}}},System.String,`0,CryptoExchange.Net.Objects.Error)">
             <summary>
-            Create new based on existing
+            ctor
             </summary>
-            <param name="callResult"></param>
+            <param name="code"></param>
+            <param name="originalData"></param>
+            <param name="responseHeaders"></param>
+            <param name="data"></param>
+            <param name="error"></param>
         </member>
-        <member name="M:CryptoExchange.Net.Objects.WebCallResult`1.CreateFrom``1(CryptoExchange.Net.Objects.WebCallResult{``0})">
+        <member name="M:CryptoExchange.Net.Objects.WebCallResult`1.As``1(``0)">
             <summary>
-            Create from a call result
+            Copy the WebCallResult to a new data type
             </summary>
-            <typeparam name="Y"></typeparam>
-            <param name="source"></param>
+            <typeparam name="K"></typeparam>
+            <param name="data"></param>
             <returns></returns>
         </member>
         <member name="M:CryptoExchange.Net.Objects.WebCallResult`1.CreateErrorResult(System.Nullable{System.Net.HttpStatusCode},System.Collections.Generic.IEnumerable{System.Collections.Generic.KeyValuePair{System.String,System.Collections.Generic.IEnumerable{System.String}}},CryptoExchange.Net.Objects.Error)">
@@ -2081,6 +2095,11 @@
         <member name="P:CryptoExchange.Net.Objects.BaseOptions.LogWriters">
             <summary>
             The log writers
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.Objects.BaseOptions.OutputOriginalData">
+            <summary>
+            If true, the CallResult and DataEvent object will also contain the originally received json data in the OriginalDaa property
             </summary>
         </member>
         <member name="M:CryptoExchange.Net.Objects.BaseOptions.ToString">
@@ -2927,7 +2946,7 @@
             <param name="byteHandler">Handler for byte data</param>
             <param name="stringHandler">Handler for string data</param>
         </member>
-        <member name="M:CryptoExchange.Net.SocketClient.Subscribe``1(System.Object,System.String,System.Boolean,System.Action{``0})">
+        <member name="M:CryptoExchange.Net.SocketClient.Subscribe``1(System.Object,System.String,System.Boolean,System.Action{CryptoExchange.Net.Sockets.DataEvent{``0}})">
             <summary>
             Subscribe
             </summary>
@@ -2938,7 +2957,7 @@
             <param name="dataHandler">The handler of update data</param>
             <returns></returns>
         </member>
-        <member name="M:CryptoExchange.Net.SocketClient.Subscribe``1(System.String,System.Object,System.String,System.Boolean,System.Action{``0})">
+        <member name="M:CryptoExchange.Net.SocketClient.Subscribe``1(System.String,System.Object,System.String,System.Boolean,System.Action{CryptoExchange.Net.Sockets.DataEvent{``0}})">
             <summary>
             Subscribe using a specif URL
             </summary>
@@ -3055,7 +3074,7 @@
             <param name="message"></param>
             <returns></returns>
         </member>
-        <member name="M:CryptoExchange.Net.SocketClient.AddSubscription``1(System.Object,System.String,System.Boolean,CryptoExchange.Net.Sockets.SocketConnection,System.Action{``0})">
+        <member name="M:CryptoExchange.Net.SocketClient.AddSubscription``1(System.Object,System.String,System.Boolean,CryptoExchange.Net.Sockets.SocketConnection,System.Action{CryptoExchange.Net.Sockets.DataEvent{``0}})">
             <summary>
             Add a subscription to a connection
             </summary>
@@ -3067,7 +3086,7 @@
             <param name="dataHandler">The handler of the data received</param>
             <returns></returns>
         </member>
-        <member name="M:CryptoExchange.Net.SocketClient.AddGenericHandler(System.String,System.Action{CryptoExchange.Net.Sockets.SocketConnection,Newtonsoft.Json.Linq.JToken})">
+        <member name="M:CryptoExchange.Net.SocketClient.AddGenericHandler(System.String,System.Action{CryptoExchange.Net.Sockets.MessageEvent})">
             <summary>
             Adds a generic message handler. Used for example to reply to ping requests
             </summary>
@@ -3207,6 +3226,57 @@
             <typeparam name="T"></typeparam>
             <param name="handlers"></param>
             <param name="data"></param>
+        </member>
+        <member name="T:CryptoExchange.Net.Sockets.DataEvent`1">
+            <summary>
+            An update received from a socket update subscription
+            </summary>
+            <typeparam name="T">The type of the data</typeparam>
+        </member>
+        <member name="P:CryptoExchange.Net.Sockets.DataEvent`1.Timestamp">
+            <summary>
+            The timestamp the data was received
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.Sockets.DataEvent`1.Topic">
+            <summary>
+            The topic of the update, what symbol/asset etc..
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.Sockets.DataEvent`1.OriginalData">
+            <summary>
+            The original data that was received, only available when TODO
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.Sockets.DataEvent`1.Data">
+            <summary>
+            The received data deserialized into an object
+            </summary>
+        </member>
+        <member name="T:CryptoExchange.Net.Sockets.MessageEvent">
+            <summary>
+            Message received event
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.Sockets.MessageEvent.Connection">
+            <summary>
+            The connection the message was received on
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.Sockets.MessageEvent.JsonData">
+            <summary>
+            The json object of the data
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.Sockets.MessageEvent.OriginalData">
+            <summary>
+            The originally received string data
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.Sockets.MessageEvent.ReceivedTimestamp">
+            <summary>
+            The timestamp of when the data was received
+            </summary>
         </member>
         <member name="T:CryptoExchange.Net.Sockets.SocketConnection">
             <summary>
@@ -3368,7 +3438,7 @@
             If the subscription has been confirmed
             </summary>
         </member>
-        <member name="M:CryptoExchange.Net.Sockets.SocketSubscription.CreateForRequest(System.Object,System.Boolean,System.Action{CryptoExchange.Net.Sockets.SocketConnection,Newtonsoft.Json.Linq.JToken})">
+        <member name="M:CryptoExchange.Net.Sockets.SocketSubscription.CreateForRequest(System.Object,System.Boolean,System.Action{CryptoExchange.Net.Sockets.MessageEvent})">
             <summary>
             Create SocketSubscription for a request
             </summary>
@@ -3377,7 +3447,7 @@
             <param name="dataHandler"></param>
             <returns></returns>
         </member>
-        <member name="M:CryptoExchange.Net.Sockets.SocketSubscription.CreateForIdentifier(System.String,System.Boolean,System.Action{CryptoExchange.Net.Sockets.SocketConnection,Newtonsoft.Json.Linq.JToken})">
+        <member name="M:CryptoExchange.Net.Sockets.SocketSubscription.CreateForIdentifier(System.String,System.Boolean,System.Action{CryptoExchange.Net.Sockets.MessageEvent})">
             <summary>
             Create SocketSubscription for an identifier
             </summary>
@@ -3457,9 +3527,7 @@
         <member name="M:CryptoExchange.Net.Sockets.WebsocketFactory.CreateWebsocket(CryptoExchange.Net.Logging.Log,System.String,System.Collections.Generic.IDictionary{System.String,System.String},System.Collections.Generic.IDictionary{System.String,System.String})">
             <inheritdoc />
         </member>
-    </members>
-</doc>
-System.Diagnostics.CodeAnalysis.AllowNullAttribute">
+        <member name="T:System.Diagnostics.CodeAnalysis.AllowNullAttribute">
             <summary>
                 Specifies that <see langword="null"/> is allowed as an input even if the
                 corresponding type disallows it.

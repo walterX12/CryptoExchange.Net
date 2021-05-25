@@ -4,6 +4,7 @@ using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
 using CryptoExchange.Net.Sockets;
 using CryptoExchange.Net.UnitTests.TestImplementations;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
@@ -49,7 +50,7 @@ namespace CryptoExchange.Net.UnitTests
         public void SocketMessages_Should_BeProcessedInDataHandlers()
         {
             // arrange
-            var client = new TestSocketClient(new SocketClientOptions("") { ReconnectInterval = TimeSpan.Zero, LogVerbosity = LogVerbosity.Debug });
+            var client = new TestSocketClient(new SocketClientOptions("") { ReconnectInterval = TimeSpan.Zero, LogLevel = LogLevel.Debug });
             var socket = client.CreateSocket();
             socket.ShouldReconnect = true;
             socket.CanConnect = true;
@@ -77,7 +78,7 @@ namespace CryptoExchange.Net.UnitTests
         public void SocketMessages_Should_ContainOriginalDataIfEnabled(bool enabled)
         {
             // arrange
-            var client = new TestSocketClient(new SocketClientOptions("") { ReconnectInterval = TimeSpan.Zero, LogVerbosity = LogVerbosity.Debug, OutputOriginalData = enabled });
+            var client = new TestSocketClient(new SocketClientOptions("") { ReconnectInterval = TimeSpan.Zero, LogLevel = LogLevel.Debug, OutputOriginalData = enabled });
             var socket = client.CreateSocket();
             socket.ShouldReconnect = true;
             socket.CanConnect = true;
@@ -105,7 +106,7 @@ namespace CryptoExchange.Net.UnitTests
         {
             // arrange
             bool reconnected = false;
-            var client = new TestSocketClient(new SocketClientOptions("") { ReconnectInterval = TimeSpan.Zero, LogVerbosity = LogVerbosity.Debug });
+            var client = new TestSocketClient(new SocketClientOptions("") { ReconnectInterval = TimeSpan.Zero, LogLevel = LogLevel.Debug });
             var socket = client.CreateSocket();
             socket.ShouldReconnect = true;
             socket.CanConnect = true;
@@ -132,7 +133,7 @@ namespace CryptoExchange.Net.UnitTests
         public void UnsubscribingStream_Should_CloseTheSocket()
         {
             // arrange
-            var client = new TestSocketClient(new SocketClientOptions("") { ReconnectInterval = TimeSpan.Zero, LogVerbosity = LogVerbosity.Debug });
+            var client = new TestSocketClient(new SocketClientOptions("") { ReconnectInterval = TimeSpan.Zero, LogLevel = LogLevel.Debug });
             var socket = client.CreateSocket();
             socket.CanConnect = true;
             var sub = new SocketConnection(client, socket);
@@ -150,7 +151,7 @@ namespace CryptoExchange.Net.UnitTests
         public void UnsubscribingAll_Should_CloseAllSockets()
         {
             // arrange
-            var client = new TestSocketClient(new SocketClientOptions("") { ReconnectInterval = TimeSpan.Zero, LogVerbosity = LogVerbosity.Debug });
+            var client = new TestSocketClient(new SocketClientOptions("") { ReconnectInterval = TimeSpan.Zero, LogLevel = LogLevel.Debug });
             var socket1 = client.CreateSocket();
             var socket2 = client.CreateSocket();
             socket1.CanConnect = true;
@@ -172,7 +173,7 @@ namespace CryptoExchange.Net.UnitTests
         public void FailingToConnectSocket_Should_ReturnError()
         {
             // arrange
-            var client = new TestSocketClient(new SocketClientOptions("") { ReconnectInterval = TimeSpan.Zero, LogVerbosity = LogVerbosity.Debug });
+            var client = new TestSocketClient(new SocketClientOptions("") { ReconnectInterval = TimeSpan.Zero, LogLevel = LogLevel.Debug });
             var socket = client.CreateSocket();
             socket.CanConnect = false;
             var sub = new SocketConnection(client, socket);

@@ -25,20 +25,20 @@ namespace CryptoExchange.Net.Sockets
         /// </summary>
         public T Data { get; set; }
 
-        public DataEvent(T data, DateTime timestamp)
+        internal DataEvent(T data, DateTime timestamp)
         {
             Data = data;
             Timestamp = timestamp;
         }
 
-        public DataEvent(T data, string? topic, DateTime timestamp)
+        internal DataEvent(T data, string? topic, DateTime timestamp)
         {
             Data = data;
             Topic = topic;
             Timestamp = timestamp;
         }
 
-        public DataEvent(T data, string? topic, string? originalData, DateTime timestamp)
+        internal DataEvent(T data, string? topic, string? originalData, DateTime timestamp)
         {
             Data = data;
             Topic = topic;
@@ -46,12 +46,25 @@ namespace CryptoExchange.Net.Sockets
             Timestamp = timestamp;
         }
 
-        public DataEvent<K> Copy<K>(K data)
+        /// <summary>
+        /// Create a new DataEvent with data in t he from of K based on the current DataEvent. Topic, OriginalData and Timestamp will be retained
+        /// </summary>
+        /// <typeparam name="K">The type of the new data</typeparam>
+        /// <param name="data">The new data</param>
+        /// <returns></returns>
+        public DataEvent<K> As<K>(K data)
         {
             return new DataEvent<K>(data, Topic, OriginalData, Timestamp);
         }
 
-        public DataEvent<K> Copy<K>(K data, string? topic)
+        /// <summary>
+        /// Create a new DataEvent with data in t he from of K based on the current DataEvent. Topic, OriginalData and Timestamp will be retained
+        /// </summary>
+        /// <typeparam name="K">The type of the new data</typeparam>
+        /// <param name="data">The new data</param>
+        /// <param name="topic">The new topic</param>
+        /// <returns></returns>
+        public DataEvent<K> As<K>(K data, string? topic)
         {
             return new DataEvent<K>(data, topic, OriginalData, Timestamp);
         }

@@ -27,6 +27,13 @@ namespace CryptoExchange.Net.Sockets
         /// </summary>
         public DateTime ReceivedTimestamp { get; set; }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="connection"></param>
+        /// <param name="jsonData"></param>
+        /// <param name="originalData"></param>
+        /// <param name="timestamp"></param>
         public MessageEvent(SocketConnection connection, JToken jsonData, string originalData, DateTime timestamp)
         {
             Connection = connection;

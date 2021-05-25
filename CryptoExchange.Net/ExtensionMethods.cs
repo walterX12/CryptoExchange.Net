@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Web;
 using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -253,14 +254,14 @@ namespace CryptoExchange.Net
             catch (JsonReaderException jre)
             {
                 var info = $"Deserialize JsonReaderException: {jre.Message}, Path: {jre.Path}, LineNumber: {jre.LineNumber}, LinePosition: {jre.LinePosition}. Data: {stringData}";
-                log?.Write(LogVerbosity.Error, info);
+                log?.Write(LogLevel.Error, info);
                 if (log == null) Debug.WriteLine(info);
                 return null;
             }
             catch (JsonSerializationException jse)
             {
                 var info = $"Deserialize JsonSerializationException: {jse.Message}. Data: {stringData}";
-                log?.Write(LogVerbosity.Error, info);
+                log?.Write(LogLevel.Error, info);
                 if (log == null) Debug.WriteLine(info);
                 return null;
             }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -11,11 +12,11 @@ namespace CryptoExchange.Net.Logging
     /// </summary>
     public class Log
     {
-        private List<TextWriter> writers;
+        private List<ILogger> writers;
         /// <summary>
         /// The verbosity of the logging
         /// </summary>
-        public LogVerbosity Level { get; set; } = LogVerbosity.Info;
+        public LogLevel Level { get; set; } = LogLevel.Information;
 
         /// <summary>
         /// Client name
@@ -28,14 +29,14 @@ namespace CryptoExchange.Net.Logging
         public Log(string clientName)
         {
             ClientName = clientName;
-            writers = new List<TextWriter>();
+            writers = new List<ILogger>();
         }
 
         /// <summary>
         /// Set the writers
         /// </summary>
         /// <param name="textWriters"></param>
-        public void UpdateWriters(List<TextWriter> textWriters)
+        public void UpdateWriters(List<ILogger> textWriters)
         {
             writers = textWriters;
         }
@@ -45,7 +46,7 @@ namespace CryptoExchange.Net.Logging
         /// </summary>
         /// <param name="logType"></param>
         /// <param name="message"></param>
-        public void Write(LogVerbosity logType, string message)
+        public void Write(LogLevel logType, string message)
         {
             if ((int)logType < (int)Level)
                 return;
@@ -55,7 +56,7 @@ namespace CryptoExchange.Net.Logging
             {
                 try
                 {
-                    writer.WriteLine(logMessage);
+                    writer.Log(logType, logMessage);
                 }
                 catch (Exception e)
                 {
@@ -63,32 +64,5 @@ namespace CryptoExchange.Net.Logging
                 }
             }
         }
-    }
-
-    /// <summary>
-    /// The log verbosity
-    /// </summary>
-    public enum LogVerbosity
-    {
-        /// <summary>
-        /// Debug logging
-        /// </summary>
-        Debug,
-        /// <summary>
-        /// Info logging
-        /// </summary>
-        Info,
-        /// <summary>
-        /// Warning logging
-        /// </summary>
-        Warning,
-        /// <summary>
-        /// Error logging
-        /// </summary>
-        Error,
-        /// <summary>
-        /// None, used for disabling logging
-        /// </summary>
-        None
     }
 }

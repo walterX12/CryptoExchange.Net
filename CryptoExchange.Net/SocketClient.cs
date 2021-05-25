@@ -10,6 +10,7 @@ using CryptoExchange.Net.Interfaces;
 using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
 using CryptoExchange.Net.Sockets;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -163,7 +164,7 @@ namespace CryptoExchange.Net
                     return new CallResult<UpdateSubscription>(null, connectResult.Error);
 
                 if (needsConnecting)
-                    log.Write(LogVerbosity.Debug, $"Socket {socketConnection.Socket.Id} connected to {url} {(request == null ? "": "with request " + JsonConvert.SerializeObject(request))}");
+                    log.Write(LogLevel.Debug, $"Socket {socketConnection.Socket.Id} connected to {url} {(request == null ? "": "with request " + JsonConvert.SerializeObject(request))}");
             }
             finally
             {
@@ -175,7 +176,7 @@ namespace CryptoExchange.Net
 
             if (socketConnection.PausedActivity)
             {
-                log.Write(LogVerbosity.Info, "Socket has been paused, can't subscribe at this moment");
+                log.Write(LogLevel.Information, "Socket has been paused, can't subscribe at this moment");
                 return new CallResult<UpdateSubscription>(default, new ServerError("Socket is paused"));
             }
 
@@ -264,7 +265,7 @@ namespace CryptoExchange.Net
 
             if (socketConnection.PausedActivity)
             {
-                log.Write(LogVerbosity.Info, "Socket has been paused, can't send query at this moment");
+                log.Write(LogLevel.Information, "Socket has been paused, can't send query at this moment");
                 return new CallResult<T>(default, new ServerError("Socket is paused"));
             }
 
@@ -314,7 +315,7 @@ namespace CryptoExchange.Net
             var result = await AuthenticateSocket(socket).ConfigureAwait(false);
             if (!result)
             {
-                log.Write(LogVerbosity.Warning, "Socket authentication failed");
+                log.Write(LogLevel.Warning, "Socket authentication failed");
                 result.Error!.Message = "Authentication failed: " + result.Error.Message;
                 return new CallResult<bool>(false, result.Error);
             }
@@ -397,7 +398,7 @@ namespace CryptoExchange.Net
             {
                 if (typeof(T) == typeof(string))
                 {
-                    var stringData = (T)Convert.ChangeType(messageEvent.OriginalData, typeof(T));
+                    var stringData = (T)Convert.ChangeType(messageEvent.JsonData.ToString(), typeof(T));
                     dataHandler(new DataEvent<T>(stringData, null, OutputOriginalData ? messageEvent.OriginalData : null, messageEvent.ReceivedTimestamp));
                     return;
                 }
@@ -405,7 +406,7 @@ namespace CryptoExchange.Net
                 var desResult = Deserialize<T>(messageEvent.JsonData, false);
                 if (!desResult)
                 {
-                    log.Write(LogVerbosity.Warning, $"Failed to deserialize data into type {typeof(T)}: {desResult.Error}");
+                    log.Write(LogLevel.Warning, $"Failed to deserialize data into type {typeof(T)}: {desResult.Error}");
                     return;
                 }
 
@@ -498,7 +499,7 @@ namespace CryptoExchange.Net
         protected virtual IWebsocket CreateSocket(string address)
         {
             var socket = SocketFactory.CreateWebsocket(log, address);
-            log.Write(LogVerbosity.Debug, "Created new socket for " + address);
+            log.Write(LogLevel.Debug, "Created new socket for " + address);
 
             if (apiProxy != null)
                 socket.SetProxy(apiProxy);
@@ -508,7 +509,7 @@ namespace CryptoExchange.Net
             socket.DataInterpreterString = dataInterpreterString;
             socket.OnError += e =>
             {
-                log.Write(LogVerbosity.Info, $"Socket {socket.Id} error: " + e);
+                log.Write(LogLevel.Warning, $"Socket {socket.Id} error: " + e);
             };
             return socket;
         }
@@ -533,7 +534,7 @@ namespace CryptoExchange.Net
                         break;
                     
                     if (sockets.Any())
-                        log.Write(LogVerbosity.Debug, "Sending periodic");
+                        log.Write(LogLevel.Debug, "Sending periodic");
 
                     foreach (var socket in sockets.Values)
                     {
@@ -550,7 +551,7 @@ namespace CryptoExchange.Net
                         }
                         catch (Exception ex)
                         {
-                            log.Write(LogVerbosity.Warning, "Periodic send failed: " + ex);
+                            log.Write(LogLevel.Warning, "Periodic send failed: " + ex);
                         }
                     }
                 }
@@ -568,7 +569,7 @@ namespace CryptoExchange.Net
             if (subscription == null)
                 throw new ArgumentNullException(nameof(subscription));
 
-            log.Write(LogVerbosity.Info, "Closing subscription");
+            log.Write(LogLevel.Information, "Closing subscription");
             await subscription.Close().ConfigureAwait(false);
         }
 
@@ -578,7 +579,7 @@ namespace CryptoExchange.Net
         /// <returns></returns>
         public virtual async Task UnsubscribeAll()
         {
-            log.Write(LogVerbosity.Debug, $"Closing all {sockets.Sum(s => s.Value.SubscriptionCount)} subscriptions");
+            log.Write(LogLevel.Debug, $"Closing all {sockets.Sum(s => s.Value.SubscriptionCount)} subscriptions");
 
             await Task.Run(async () =>
             {
@@ -601,7 +602,7 @@ namespace CryptoExchange.Net
             disposing = true;
             periodicEvent?.Set();
             periodicEvent?.Dispose();
-            log.Write(LogVerbosity.Debug, "Disposing socket client, closing all subscriptions");
+            log.Write(LogLevel.Debug, "Disposing socket client, closing all subscriptions");
             Task.Run(UnsubscribeAll).Wait();
             semaphoreSlim?.Dispose();
             base.Dispose();

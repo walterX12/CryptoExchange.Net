@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using CryptoExchange.Net.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace CryptoExchange.Net.Sockets
 {
@@ -84,7 +85,7 @@ namespace CryptoExchange.Net.Sockets
                 if (pausedActivity != value)
                 {
                     pausedActivity = value;
-                    log.Write(LogVerbosity.Debug, "Paused activity: " + value);
+                    log.Write(LogLevel.Debug, "Paused activity: " + value);
                     if(pausedActivity) ActivityPaused?.Invoke();
                     else ActivityUnpaused?.Invoke();
                 }
@@ -140,7 +141,7 @@ namespace CryptoExchange.Net.Sockets
         private void ProcessMessage(string data)
         {
             var timestamp = DateTime.UtcNow;
-            log.Write(LogVerbosity.Debug, $"Socket {Socket.Id} received data: " + data);
+            log.Write(LogLevel.Trace, $"Socket {Socket.Id} received data: " + data);
             if (string.IsNullOrEmpty(data)) return;
 
             var tokenData = data.ToJToken(log);
@@ -181,7 +182,7 @@ namespace CryptoExchange.Net.Sockets
             if (!HandleData(messageEvent) && !handledResponse)
             {
                 if (!socketClient.UnhandledMessageExpected)
-                    log.Write(LogVerbosity.Warning, $"Socket {Socket.Id} Message not handled: " + tokenData);
+                    log.Write(LogLevel.Warning, $"Socket {Socket.Id} Message not handled: " + tokenData);
                 UnhandledMessage?.Invoke(tokenData);
             }
         }
@@ -230,15 +231,15 @@ namespace CryptoExchange.Net.Sockets
 
                 sw.Stop();
                 if (sw.ElapsedMilliseconds > 500)
-                    log.Write(LogVerbosity.Warning, $"Socket {Socket.Id} message processing slow ({sw.ElapsedMilliseconds}ms), consider offloading data handling to another thread. " +
+                    log.Write(LogLevel.Warning, $"Socket {Socket.Id} message processing slow ({sw.ElapsedMilliseconds}ms), consider offloading data handling to another thread. " +
                                                     "Data from this socket may arrive late or not at all if message processing is continuously slow.");
                 else
-                    log.Write(LogVerbosity.Debug, $"Socket {Socket.Id} message processed in {sw.ElapsedMilliseconds}ms");
+                    log.Write(LogLevel.Trace, $"Socket {Socket.Id} message processed in {sw.ElapsedMilliseconds}ms");
                 return handled;
             }
             catch (Exception ex)
             {
-                log.Write(LogVerbosity.Error, $"Socket {Socket.Id} Exception during message processing\r\nException: {ex.ToLogString()}\r\nData: {messageEvent.JsonData}");
+                log.Write(LogLevel.Error, $"Socket {Socket.Id} Exception during message processing\r\nException: {ex.ToLogString()}\r\nData: {messageEvent.JsonData}");
                 currentSubscription?.InvokeExceptionHandler(ex);
                 return false;
             }
@@ -283,7 +284,7 @@ namespace CryptoExchange.Net.Sockets
         /// <param name="data">The data to send</param>
         public virtual void Send(string data)
         {
-            log.Write(LogVerbosity.Debug, $"Socket {Socket.Id} sending data: {data}");
+            log.Write(LogLevel.Debug, $"Socket {Socket.Id} sending data: {data}");
             Socket.Send(data);
         }
 
@@ -299,7 +300,7 @@ namespace CryptoExchange.Net.Sockets
 
                 Socket.Reconnecting = true;
 
-                log.Write(LogVerbosity.Info, $"Socket {Socket.Id} Connection lost, will try to reconnect after {socketClient.ReconnectInterval}");
+                log.Write(LogLevel.Information, $"Socket {Socket.Id} Connection lost, will try to reconnect after {socketClient.ReconnectInterval}");
                 Task.Run(async () =>
                 {
                     while (ShouldReconnect)
@@ -315,14 +316,14 @@ namespace CryptoExchange.Net.Sockets
                         Socket.Reset();
                         if (!await Socket.Connect().ConfigureAwait(false))
                         {
-                            log.Write(LogVerbosity.Debug, $"Socket {Socket.Id} failed to reconnect");
+                            log.Write(LogLevel.Debug, $"Socket {Socket.Id} failed to reconnect");
                             continue;
                         }
 
                         var time = DisconnectTime;
                         DisconnectTime = null;
 
-                        log.Write(LogVerbosity.Info, $"Socket {Socket.Id} reconnected after {DateTime.UtcNow - time}");
+                        log.Write(LogLevel.Information, $"Socket {Socket.Id} reconnected after {DateTime.UtcNow - time}");
 
                         var reconnectResult = await ProcessReconnect().ConfigureAwait(false);
                         if (!reconnectResult)
@@ -344,7 +345,7 @@ namespace CryptoExchange.Net.Sockets
             }
             else
             {
-                log.Write(LogVerbosity.Info, $"Socket {Socket.Id} closed");
+                log.Write(LogLevel.Information, $"Socket {Socket.Id} closed");
                 if (socketClient.sockets.ContainsKey(Socket.Id))
                     socketClient.sockets.TryRemove(Socket.Id, out _);
 
@@ -364,11 +365,11 @@ namespace CryptoExchange.Net.Sockets
                 var authResult = await socketClient.AuthenticateSocket(this).ConfigureAwait(false);
                 if (!authResult)
                 {
-                    log.Write(LogVerbosity.Info, $"Socket {Socket.Id} authentication failed on reconnected socket. Disconnecting and reconnecting.");
+                    log.Write(LogLevel.Information, $"Socket {Socket.Id} authentication failed on reconnected socket. Disconnecting and reconnecting.");
                     return false;
                 }
 
-                log.Write(LogVerbosity.Debug, $"Socket {Socket.Id} authentication succeeded on reconnected socket.");
+                log.Write(LogLevel.Debug, $"Socket {Socket.Id} authentication succeeded on reconnected socket.");
             }
 
             List<SocketSubscription> subscriptionList;
@@ -390,11 +391,11 @@ namespace CryptoExchange.Net.Sockets
             Task.WaitAll(taskList.ToArray());
             if (!success)
             {
-                log.Write(LogVerbosity.Debug, $"Socket {Socket.Id} resubscribing all subscriptions failed on reconnected socket. Disconnecting and reconnecting.");
+                log.Write(LogLevel.Debug, $"Socket {Socket.Id} resubscribing all subscriptions failed on reconnected socket. Disconnecting and reconnecting.");
                 return false;
             }
 
-            log.Write(LogVerbosity.Debug, $"Socket {Socket.Id} all subscription successfully resubscribed on reconnected socket.");
+            log.Write(LogLevel.Debug, $"Socket {Socket.Id} all subscription successfully resubscribed on reconnected socket.");
             return true;
         }
         

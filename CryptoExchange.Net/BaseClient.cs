@@ -2,6 +2,7 @@
 using CryptoExchange.Net.Authentication;
 using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -80,14 +81,14 @@ namespace CryptoExchange.Net
             log = new Log(clientName);
             authProvider = authenticationProvider;
             log.UpdateWriters(options.LogWriters);
-            log.Level = options.LogVerbosity;
+            log.Level = options.LogLevel;
 
             ClientName = clientName;
             OutputOriginalData = options.OutputOriginalData;
             BaseAddress = options.BaseAddress;
             apiProxy = options.Proxy;
 
-            log.Write(LogVerbosity.Debug, $"Client configuration: {options}, CryptoExchange.Net: v{typeof(BaseClient).Assembly.GetName().Version}, {ClientName}.Net: v{GetType().Assembly.GetName().Version}");
+            log.Write(LogLevel.Debug, $"Client configuration: {options}, CryptoExchange.Net: v{typeof(BaseClient).Assembly.GetName().Version}, {ClientName}.Net: v{GetType().Assembly.GetName().Version}");
             ShouldCheckObjects = options.ShouldCheckObjects;
         }
 
@@ -97,7 +98,7 @@ namespace CryptoExchange.Net
         /// <param name="authenticationProvider"></param>
         protected void SetAuthenticationProvider(AuthenticationProvider authenticationProvider)
         {
-            log.Write(LogVerbosity.Debug, "Setting api credentials");
+            log.Write(LogLevel.Debug, "Setting api credentials");
             authProvider = authenticationProvider;
         }
 
@@ -111,7 +112,7 @@ namespace CryptoExchange.Net
             if (string.IsNullOrEmpty(data))
             {
                 var info = "Empty data object received";
-                log.Write(LogVerbosity.Error, info);
+                log.Write(LogLevel.Error, info);
                 return new CallResult<JToken>(null, new DeserializeError(info, data));
             }
 
@@ -151,7 +152,7 @@ namespace CryptoExchange.Net
             var tokenResult = ValidateJson(data);
             if (!tokenResult)
             {
-                log.Write(LogVerbosity.Error, tokenResult.Error!.Message);
+                log.Write(LogLevel.Error, tokenResult.Error!.Message);
                 return new CallResult<T>(default, tokenResult.Error);
             }
 
@@ -174,7 +175,7 @@ namespace CryptoExchange.Net
 
             try
             {
-                if ((checkObject ?? ShouldCheckObjects)&& log.Level == LogVerbosity.Debug)
+                if ((checkObject ?? ShouldCheckObjects)&& log.Level == LogLevel.Debug)
                 {
                     try
                     {
@@ -190,7 +191,7 @@ namespace CryptoExchange.Net
                     }
                     catch (Exception e)
                     {
-                        log.Write(LogVerbosity.Debug, $"{(requestId != null ? $"[{ requestId}] " : "")}Failed to check response data: " + (e.InnerException?.Message ?? e.Message));
+                        log.Write(LogLevel.Debug, $"{(requestId != null ? $"[{ requestId}] " : "")}Failed to check response data: " + (e.InnerException?.Message ?? e.Message));
                     }
                 }
 
@@ -199,20 +200,20 @@ namespace CryptoExchange.Net
             catch (JsonReaderException jre)
             {
                 var info = $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize JsonReaderException: {jre.Message}, Path: {jre.Path}, LineNumber: {jre.LineNumber}, LinePosition: {jre.LinePosition}";
-                log.Write(LogVerbosity.Error, info);
+                log.Write(LogLevel.Error, info);
                 return new CallResult<T>(default, new DeserializeError(info, obj));
             }
             catch (JsonSerializationException jse)
             {
                 var info = $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize JsonSerializationException: {jse.Message}";
-                log.Write(LogVerbosity.Error, info);
+                log.Write(LogLevel.Error, info);
                 return new CallResult<T>(default, new DeserializeError(info, obj));
             }
             catch (Exception ex)
             {
                 var exceptionInfo = ex.ToLogString();
                 var info = $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize Unknown Exception: {exceptionInfo}";
-                log.Write(LogVerbosity.Error, info);
+                log.Write(LogLevel.Error, info);
                 return new CallResult<T>(default, new DeserializeError(info, obj));
             }
         }
@@ -234,10 +235,10 @@ namespace CryptoExchange.Net
             try
             {
                 using var reader = new StreamReader(stream, Encoding.UTF8, false, 512, true);
-                if (OutputOriginalData || log.Level == LogVerbosity.Debug)
+                if (OutputOriginalData || log.Level == LogLevel.Debug)
                 {
                     var data = await reader.ReadToEndAsync().ConfigureAwait(false);
-                    log.Write(LogVerbosity.Debug, $"{(requestId != null ? $"[{requestId}] ": "")}Response received{(elapsedMilliseconds != null ? $" in {elapsedMilliseconds}" : " ")}ms: {data}");
+                    log.Write(LogLevel.Debug, $"{(requestId != null ? $"[{requestId}] ": "")}Response received{(elapsedMilliseconds != null ? $" in {elapsedMilliseconds}" : " ")}ms: {data}");
                     var result = Deserialize<T>(data, null, serializer, requestId);
                     if(OutputOriginalData)
                         result.OriginalData = data;
@@ -256,8 +257,8 @@ namespace CryptoExchange.Net
                     data = await ReadStream(stream).ConfigureAwait(false);
                 }
                 else
-                    data = "[Data only available in Debug LogVerbosity]";
-                log.Write(LogVerbosity.Error, $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize JsonReaderException: {jre.Message}, Path: {jre.Path}, LineNumber: {jre.LineNumber}, LinePosition: {jre.LinePosition}, data: {data}");
+                    data = "[Data only available in Debug LogLevel]";
+                log.Write(LogLevel.Error, $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize JsonReaderException: {jre.Message}, Path: {jre.Path}, LineNumber: {jre.LineNumber}, LinePosition: {jre.LinePosition}, data: {data}");
                 return new CallResult<T>(default, new DeserializeError($"Deserialize JsonReaderException: {jre.Message}, Path: {jre.Path}, LineNumber: {jre.LineNumber}, LinePosition: {jre.LinePosition}", data));
             }
             catch (JsonSerializationException jse)
@@ -269,9 +270,9 @@ namespace CryptoExchange.Net
                     data = await ReadStream(stream).ConfigureAwait(false);
                 }
                 else
-                    data = "[Data only available in Debug LogVerbosity]";
+                    data = "[Data only available in Debug LogLevel]";
 
-                log.Write(LogVerbosity.Error, $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize JsonSerializationException: {jse.Message}, data: {data}");
+                log.Write(LogLevel.Error, $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize JsonSerializationException: {jse.Message}, data: {data}");
                 return new CallResult<T>(default, new DeserializeError($"Deserialize JsonSerializationException: {jse.Message}", data));
             }
             catch (Exception ex)
@@ -282,10 +283,10 @@ namespace CryptoExchange.Net
                     data = await ReadStream(stream).ConfigureAwait(false);
                 }
                 else
-                    data = "[Data only available in Debug LogVerbosity]";
+                    data = "[Data only available in Debug LogLevel]";
 
                 var exceptionInfo = ex.ToLogString();
-                log.Write(LogVerbosity.Error, $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize Unknown Exception: {exceptionInfo}, data: {data}");
+                log.Write(LogLevel.Error, $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize Unknown Exception: {exceptionInfo}, data: {data}");
                 return new CallResult<T>(default, new DeserializeError($"Deserialize Unknown Exception: {exceptionInfo}", data));
             }
         }
@@ -310,7 +311,7 @@ namespace CryptoExchange.Net
 
             if (!obj.HasValues && type != typeof(object))
             {
-                log.Write(LogVerbosity.Warning, $"{(requestId != null ? $"[{requestId}] " : "")}Expected `{type.Name}`, but received object was empty");
+                log.Write(LogLevel.Warning, $"{(requestId != null ? $"[{requestId}] " : "")}Expected `{type.Name}`, but received object was empty");
                 return;
             }
 
@@ -337,7 +338,7 @@ namespace CryptoExchange.Net
                     {
                         if (!(type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>)))
                         {
-                            log.Write(LogVerbosity.Warning, $"{(requestId != null ? $"[{requestId}] " : "")}Local object doesn't have property `{token.Key}` expected in type `{type.Name}`");
+                            log.Write(LogLevel.Warning, $"{(requestId != null ? $"[{requestId}] " : "")}Local object doesn't have property `{token.Key}` expected in type `{type.Name}`");
                             isDif = true;
                         }
                         continue;
@@ -367,11 +368,11 @@ namespace CryptoExchange.Net
                     continue;
 
                 isDif = true;
-                log.Write(LogVerbosity.Warning, $"{(requestId != null ? $"[{requestId}] " : "")}Local object has property `{prop}` but was not found in received object of type `{type.Name}`");
+                log.Write(LogLevel.Warning, $"{(requestId != null ? $"[{requestId}] " : "")}Local object has property `{prop}` but was not found in received object of type `{type.Name}`");
             }
 
             if (isDif)
-                log.Write(LogVerbosity.Debug, $"{(requestId != null ? $"[{ requestId}] " : "")}Returned data: " + obj);
+                log.Write(LogLevel.Debug, $"{(requestId != null ? $"[{ requestId}] " : "")}Returned data: " + obj);
         }
 
         private static PropertyInfo? GetProperty(string name, IEnumerable<PropertyInfo> props)
@@ -445,7 +446,7 @@ namespace CryptoExchange.Net
         public virtual void Dispose()
         {
             authProvider?.Credentials?.Dispose();
-            log.Write(LogVerbosity.Debug, "Disposing exchange client");
+            log.Write(LogLevel.Debug, "Disposing exchange client");
         }
     }
 }

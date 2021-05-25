@@ -1483,16 +1483,10 @@
             <param name="headers"></param>
             <returns></returns>
         </member>
-        <member name="T:CryptoExchange.Net.Logging.DebugTextWriter">
+        <member name="T:CryptoExchange.Net.Logging.DebugLogger">
             <summary>
             Default log writer, writes to debug
             </summary>
-        </member>
-        <member name="P:CryptoExchange.Net.Logging.DebugTextWriter.Encoding">
-            <inheritdoc />
-        </member>
-        <member name="M:CryptoExchange.Net.Logging.DebugTextWriter.WriteLine(System.String)">
-            <inheritdoc />
         </member>
         <member name="T:CryptoExchange.Net.Logging.Log">
             <summary>
@@ -1514,48 +1508,18 @@
             ctor
             </summary>
         </member>
-        <member name="M:CryptoExchange.Net.Logging.Log.UpdateWriters(System.Collections.Generic.List{System.IO.TextWriter})">
+        <member name="M:CryptoExchange.Net.Logging.Log.UpdateWriters(System.Collections.Generic.List{Microsoft.Extensions.Logging.ILogger})">
             <summary>
             Set the writers
             </summary>
             <param name="textWriters"></param>
         </member>
-        <member name="M:CryptoExchange.Net.Logging.Log.Write(CryptoExchange.Net.Logging.LogVerbosity,System.String)">
+        <member name="M:CryptoExchange.Net.Logging.Log.Write(Microsoft.Extensions.Logging.LogLevel,System.String)">
             <summary>
             Write a log entry
             </summary>
             <param name="logType"></param>
             <param name="message"></param>
-        </member>
-        <member name="T:CryptoExchange.Net.Logging.LogVerbosity">
-            <summary>
-            The log verbosity
-            </summary>
-        </member>
-        <member name="F:CryptoExchange.Net.Logging.LogVerbosity.Debug">
-            <summary>
-            Debug logging
-            </summary>
-        </member>
-        <member name="F:CryptoExchange.Net.Logging.LogVerbosity.Info">
-            <summary>
-            Info logging
-            </summary>
-        </member>
-        <member name="F:CryptoExchange.Net.Logging.LogVerbosity.Warning">
-            <summary>
-            Warning logging
-            </summary>
-        </member>
-        <member name="F:CryptoExchange.Net.Logging.LogVerbosity.Error">
-            <summary>
-            Error logging
-            </summary>
-        </member>
-        <member name="F:CryptoExchange.Net.Logging.LogVerbosity.None">
-            <summary>
-            None, used for disabling logging
-            </summary>
         </member>
         <member name="T:CryptoExchange.Net.Logging.ThreadSafeFileWriter">
             <summary>
@@ -2087,7 +2051,7 @@
             Base options
             </summary>
         </member>
-        <member name="P:CryptoExchange.Net.Objects.BaseOptions.LogVerbosity">
+        <member name="P:CryptoExchange.Net.Objects.BaseOptions.LogLevel">
             <summary>
             The log verbosity
             </summary>
@@ -3253,6 +3217,23 @@
             The received data deserialized into an object
             </summary>
         </member>
+        <member name="M:CryptoExchange.Net.Sockets.DataEvent`1.As``1(``0)">
+            <summary>
+            Create a new DataEvent with data in t he from of K based on the current DataEvent. Topic, OriginalData and Timestamp will be retained
+            </summary>
+            <typeparam name="K">The type of the new data</typeparam>
+            <param name="data">The new data</param>
+            <returns></returns>
+        </member>
+        <member name="M:CryptoExchange.Net.Sockets.DataEvent`1.As``1(``0,System.String)">
+            <summary>
+            Create a new DataEvent with data in t he from of K based on the current DataEvent. Topic, OriginalData and Timestamp will be retained
+            </summary>
+            <typeparam name="K">The type of the new data</typeparam>
+            <param name="data">The new data</param>
+            <param name="topic">The new topic</param>
+            <returns></returns>
+        </member>
         <member name="T:CryptoExchange.Net.Sockets.MessageEvent">
             <summary>
             Message received event
@@ -3277,6 +3258,15 @@
             <summary>
             The timestamp of when the data was received
             </summary>
+        </member>
+        <member name="M:CryptoExchange.Net.Sockets.MessageEvent.#ctor(CryptoExchange.Net.Sockets.SocketConnection,Newtonsoft.Json.Linq.JToken,System.String,System.DateTime)">
+            <summary>
+            
+            </summary>
+            <param name="connection"></param>
+            <param name="jsonData"></param>
+            <param name="originalData"></param>
+            <param name="timestamp"></param>
         </member>
         <member name="T:CryptoExchange.Net.Sockets.SocketConnection">
             <summary>
@@ -3526,149 +3516,6 @@
         </member>
         <member name="M:CryptoExchange.Net.Sockets.WebsocketFactory.CreateWebsocket(CryptoExchange.Net.Logging.Log,System.String,System.Collections.Generic.IDictionary{System.String,System.String},System.Collections.Generic.IDictionary{System.String,System.String})">
             <inheritdoc />
-        </member>
-        <member name="T:System.Diagnostics.CodeAnalysis.AllowNullAttribute">
-            <summary>
-                Specifies that <see langword="null"/> is allowed as an input even if the
-                corresponding type disallows it.
-            </summary>
-        </member>
-        <member name="M:System.Diagnostics.CodeAnalysis.AllowNullAttribute.#ctor">
-            <summary>
-                Initializes a new instance of the <see cref="T:System.Diagnostics.CodeAnalysis.AllowNullAttribute"/> class.
-            </summary>
-        </member>
-        <member name="T:System.Diagnostics.CodeAnalysis.DisallowNullAttribute">
-            <summary>
-                Specifies that <see langword="null"/> is disallowed as an input even if the
-                corresponding type allows it.
-            </summary>
-        </member>
-        <member name="M:System.Diagnostics.CodeAnalysis.DisallowNullAttribute.#ctor">
-            <summary>
-                Initializes a new instance of the <see cref="T:System.Diagnostics.CodeAnalysis.DisallowNullAttribute"/> class.
-            </summary>
-        </member>
-        <member name="T:System.Diagnostics.CodeAnalysis.DoesNotReturnAttribute">
-            <summary>
-                Specifies that a method that will never return under any circumstance.
-            </summary>
-        </member>
-        <member name="M:System.Diagnostics.CodeAnalysis.DoesNotReturnAttribute.#ctor">
-            <summary>
-                Initializes a new instance of the <see cref="T:System.Diagnostics.CodeAnalysis.DoesNotReturnAttribute"/> class.
-            </summary>
-        </member>
-        <member name="T:System.Diagnostics.CodeAnalysis.DoesNotReturnIfAttribute">
-            <summary>
-                Specifies that the method will not return if the associated <see cref="T:System.Boolean"/>
-                parameter is passed the specified value.
-            </summary>
-        </member>
-        <member name="P:System.Diagnostics.CodeAnalysis.DoesNotReturnIfAttribute.ParameterValue">
-            <summary>
-                Gets the condition parameter value.
-                Code after the method is considered unreachable by diagnostics if the argument
-                to the associated parameter matches this value.
-            </summary>
-        </member>
-        <member name="M:System.Diagnostics.CodeAnalysis.DoesNotReturnIfAttribute.#ctor(System.Boolean)">
-            <summary>
-                Initializes a new instance of the <see cref="T:System.Diagnostics.CodeAnalysis.DoesNotReturnIfAttribute"/>
-                class with the specified parameter value.
-            </summary>
-            <param name="parameterValue">
-                The condition parameter value.
-                Code after the method is considered unreachable by diagnostics if the argument
-                to the associated parameter matches this value.
-            </param>
-        </member>
-        <member name="T:System.Diagnostics.CodeAnalysis.MaybeNullAttribute">
-            <summary>
-                Specifies that an output may be <see langword="null"/> even if the
-                corresponding type disallows it.
-            </summary>
-        </member>
-        <member name="M:System.Diagnostics.CodeAnalysis.MaybeNullAttribute.#ctor">
-            <summary>
-                Initializes a new instance of the <see cref="T:System.Diagnostics.CodeAnalysis.MaybeNullAttribute"/> class.
-            </summary>
-        </member>
-        <member name="T:System.Diagnostics.CodeAnalysis.MaybeNullWhenAttribute">
-            <summary>
-                Specifies that when a method returns <see cref="P:System.Diagnostics.CodeAnalysis.MaybeNullWhenAttribute.ReturnValue"/>, 
-                the parameter may be <see langword="null"/> even if the corresponding type disallows it.
-            </summary>
-        </member>
-        <member name="P:System.Diagnostics.CodeAnalysis.MaybeNullWhenAttribute.ReturnValue">
-            <summary>
-                Gets the return value condition.
-                If the method returns this value, the associated parameter may be <see langword="null"/>.
-            </summary>
-        </member>
-        <member name="M:System.Diagnostics.CodeAnalysis.MaybeNullWhenAttribute.#ctor(System.Boolean)">
-            <summary>
-                 Initializes the attribute with the specified return value condition.
-            </summary>
-            <param name="returnValue">
-                The return value condition.
-                If the method returns this value, the associated parameter may be <see langword="null"/>.
-            </param>
-        </member>
-        <member name="T:System.Diagnostics.CodeAnalysis.NotNullAttribute">
-            <summary>
-                Specifies that an output is not <see langword="null"/> even if the
-                corresponding type allows it.
-            </summary>
-        </member>
-        <member name="M:System.Diagnostics.CodeAnalysis.NotNullAttribute.#ctor">
-            <summary>
-                Initializes a new instance of the <see cref="T:System.Diagnostics.CodeAnalysis.NotNullAttribute"/> class.
-            </summary>
-        </member>
-        <member name="T:System.Diagnostics.CodeAnalysis.NotNullIfNotNullAttribute">
-            <summary>
-                Specifies that the output will be non-<see langword="null"/> if the
-                named parameter is non-<see langword="null"/>.
-            </summary>
-        </member>
-        <member name="P:System.Diagnostics.CodeAnalysis.NotNullIfNotNullAttribute.ParameterName">
-            <summary>
-                Gets the associated parameter name.
-                The output will be non-<see langword="null"/> if the argument to the
-                parameter specified is non-<see langword="null"/>.
-            </summary>
-        </member>
-        <member name="M:System.Diagnostics.CodeAnalysis.NotNullIfNotNullAttribute.#ctor(System.String)">
-            <summary>
-                Initializes the attribute with the associated parameter name.
-            </summary>
-            <param name="parameterName">
-                The associated parameter name.
-                The output will be non-<see langword="null"/> if the argument to the
-                parameter specified is non-<see langword="null"/>.
-            </param>
-        </member>
-        <member name="T:System.Diagnostics.CodeAnalysis.NotNullWhenAttribute">
-            <summary>
-                Specifies that when a method returns <see cref="P:System.Diagnostics.CodeAnalysis.NotNullWhenAttribute.ReturnValue"/>,
-                the parameter will not be <see langword="null"/> even if the corresponding type allows it.
-            </summary>
-        </member>
-        <member name="P:System.Diagnostics.CodeAnalysis.NotNullWhenAttribute.ReturnValue">
-            <summary>
-                Gets the return value condition.
-                If the method returns this value, the associated parameter will not be <see langword="null"/>.
-            </summary>
-        </member>
-        <member name="M:System.Diagnostics.CodeAnalysis.NotNullWhenAttribute.#ctor(System.Boolean)">
-            <summary>
-                Initializes the attribute with the specified return value condition.
-            </summary>
-            <param name="returnValue">
-                The return value condition.
-                If the method returns this value, the associated parameter will not be <see langword="null"/>.
-            </param>
         </member>
     </members>
 </doc>

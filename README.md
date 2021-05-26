@@ -290,6 +290,11 @@ static async Task GetExchangeData(IExchangeClient client)
 ````
 
 ## Release notes
+* Version 4.0.0-beta5 - 26 May 2021
+    * Added DataEvent wrapper for socket updates
+    * Added optional original json output
+    * Changed logging implementation to use ILogger
+
 * Version 4.0.0-beta4 - 06 mei 2021
     * Added analyzers
     * Fixed some warnings

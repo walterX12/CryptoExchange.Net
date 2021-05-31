@@ -385,7 +385,7 @@ namespace CryptoExchange.Net.Sockets
                 taskList.Add(task);
             }
 
-            Task.WaitAll(taskList.ToArray());
+            await Task.WhenAll(taskList).ConfigureAwait(false);
             if (!success)
             {
                 log.Write(LogVerbosity.Debug, $"Socket {Socket.Id} resubscribing all subscriptions failed on reconnected socket. Disconnecting and reconnecting.");

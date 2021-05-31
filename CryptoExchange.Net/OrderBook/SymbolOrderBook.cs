@@ -235,7 +235,7 @@ namespace CryptoExchange.Net.OrderBook
 
             subscription = startResult.Data;
             subscription.ConnectionLost += Reset;
-            subscription.ConnectionRestored += time => Resync();
+            subscription.ConnectionRestored += async time => await Resync().ConfigureAwait(false);
             Status = OrderBookStatus.Synced;
             return new CallResult<bool>(true, null);
         }
@@ -246,13 +246,13 @@ namespace CryptoExchange.Net.OrderBook
             Status = OrderBookStatus.Reconnecting;
             _queueEvent.Set();
             // Clear queue
-            while(_processQueue.TryDequeue(out _))
+            while (_processQueue.TryDequeue(out _)) { }
             processBuffer.Clear();
             bookSet = false;
             DoReset();
         }
 
-        private void Resync()
+        private async Task Resync()
         {
             Status = OrderBookStatus.Syncing;
             var success = false;
@@ -261,7 +261,7 @@ namespace CryptoExchange.Net.OrderBook
                 if (Status != OrderBookStatus.Syncing)
                     return;
 
-                var resyncResult = DoResync().Result;
+                var resyncResult = await DoResync().ConfigureAwait(false);
                 success = resyncResult;
             }
 
@@ -284,7 +284,9 @@ namespace CryptoExchange.Net.OrderBook
             log.Write(LogVerbosity.Debug, $"{Id} order book {Symbol} stopping");
             Status = OrderBookStatus.Disconnected;
             _queueEvent.Set();
-            _processTask?.Wait();
+            if(_processTask != null)
+                await _processTask.ConfigureAwait(false);
+
             if(subscription != null)
                 await subscription.Close().ConfigureAwait(false);
         }

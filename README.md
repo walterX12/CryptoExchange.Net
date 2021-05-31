@@ -103,6 +103,9 @@ Donations are greatly appreciated and a motivation to keep improving.
 **Eth**:  0x069176ca1a4b1d6e0b7901a6bc0dbf3bb0bf5cc2  
 **Nano**: xrb_1ocs3hbp561ef76eoctjwg85w5ugr8wgimkj8mfhoyqbx4s1pbc74zggw7gs  
 
+## Discord
+A Discord server is available [here](https://discord.gg/MSpeEtSY8t). For discussion and/or questions around the CryptoExchange.Net and implementation libraries, feel free to join.
+
 ## Usage
 Most API methods are available in two flavors, sync and async, see the example using the `BinanceClient`:
 ````C#
@@ -290,6 +293,11 @@ static async Task GetExchangeData(IExchangeClient client)
 ````
 
 ## Release notes
+* Version 4.0.0-beta5 - 26 May 2021
+    * Added DataEvent wrapper for socket updates
+    * Added optional original json output
+    * Changed logging implementation to use ILogger
+
 * Version 4.0.0-beta4 - 06 mei 2021
     * Added analyzers
     * Fixed some warnings

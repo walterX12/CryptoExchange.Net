@@ -4,6 +4,7 @@ using System.Net.Http;
 using CryptoExchange.Net.Authentication;
 using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
+using Microsoft.Extensions.Logging;
 
 namespace CryptoExchange.Net.UnitTests
 {
@@ -17,7 +18,7 @@ namespace CryptoExchange.Net.UnitTests
         {
         }
 
-        public void Log(LogVerbosity verbosity, string data)
+        public void Log(LogLevel verbosity, string data)
         {
             log.Write(verbosity, data);
         }

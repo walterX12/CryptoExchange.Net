@@ -17,6 +17,7 @@ using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
 using CryptoExchange.Net.RateLimiter;
 using CryptoExchange.Net.Requests;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -179,10 +180,10 @@ namespace CryptoExchange.Net
             JsonSerializer? deserializer = null) where T : class
         {
             var requestId = NextId();
-            log.Write(LogVerbosity.Debug, $"[{requestId}] Creating request for " + uri);
+            log.Write(LogLevel.Debug, $"[{requestId}] Creating request for " + uri);
             if (signed && authProvider == null)
             {
-                log.Write(LogVerbosity.Warning, $"[{requestId}] Request {uri.AbsolutePath} failed because no ApiCredentials were provided");
+                log.Write(LogLevel.Warning, $"[{requestId}] Request {uri.AbsolutePath} failed because no ApiCredentials were provided");
                 return new WebCallResult<T>(null, null, null, new NoApiCredentialsError());
             }
 
@@ -192,19 +193,19 @@ namespace CryptoExchange.Net
                 var limitResult = limiter.LimitRequest(this, uri.AbsolutePath, RateLimitBehaviour, credits);
                 if (!limitResult.Success)
                 {
-                    log.Write(LogVerbosity.Debug, $"[{requestId}] Request {uri.AbsolutePath} failed because of rate limit");
+                    log.Write(LogLevel.Information, $"[{requestId}] Request {uri.AbsolutePath} failed because of rate limit");
                     return new WebCallResult<T>(null, null, null, limitResult.Error);
                 }
 
                 if (limitResult.Data > 0)
-                    log.Write(LogVerbosity.Debug, $"[{requestId}] Request {uri.AbsolutePath} was limited by {limitResult.Data}ms by {limiter.GetType().Name}");
+                    log.Write(LogLevel.Information, $"[{requestId}] Request {uri.AbsolutePath} was limited by {limitResult.Data}ms by {limiter.GetType().Name}");
             }
 
             string? paramString = null;
             if (method == HttpMethod.Post)
                 paramString = " with request body " + request.Content;
 
-            log.Write(LogVerbosity.Debug, $"[{requestId}] Sending {method}{(signed ? " signed" : "")} request to {request.Uri}{paramString ?? " "}{(apiProxy == null ? "" : $" via proxy {apiProxy.Host}")}");
+            log.Write(LogLevel.Debug, $"[{requestId}] Sending {method}{(signed ? " signed" : "")} request to {request.Uri}{paramString ?? " "}{(apiProxy == null ? "" : $" via proxy {apiProxy.Host}")}");
             return await GetResponse<T>(request, deserializer, cancellationToken).ConfigureAwait(false);
         }
 
@@ -234,7 +235,7 @@ namespace CryptoExchange.Net
                         var data = await reader.ReadToEndAsync().ConfigureAwait(false);
                         responseStream.Close();
                         response.Close();
-                        log.Write(LogVerbosity.Debug, $"[{request.RequestId}] Response received in {sw.ElapsedMilliseconds}ms: {data}");
+                        log.Write(LogLevel.Debug, $"[{request.RequestId}] Response received in {sw.ElapsedMilliseconds}ms: {data}");
 
                         var parseResult = ValidateJson(data);
                         if (!parseResult.Success)
@@ -244,7 +245,7 @@ namespace CryptoExchange.Net
                             return WebCallResult<T>.CreateErrorResult(response.StatusCode, response.ResponseHeaders, error);
 
                         var deserializeResult = Deserialize<T>(parseResult.Data, null, deserializer, request.RequestId);
-                        return new WebCallResult<T>(response.StatusCode, response.ResponseHeaders, deserializeResult.Data, deserializeResult.Error);
+                        return new WebCallResult<T>(response.StatusCode, response.ResponseHeaders, OutputOriginalData ? data: null, deserializeResult.Data, deserializeResult.Error);
                     }
                     else
                     {
@@ -259,7 +260,7 @@ namespace CryptoExchange.Net
                 {
                     using var reader = new StreamReader(responseStream);
                     var data = await reader.ReadToEndAsync().ConfigureAwait(false);
-                    log.Write(LogVerbosity.Debug, $"[{request.RequestId}] Error received: {data}");
+                    log.Write(LogLevel.Debug, $"[{request.RequestId}] Error received: {data}");
                     responseStream.Close();
                     response.Close();
                     var parseResult = ValidateJson(data);
@@ -272,7 +273,7 @@ namespace CryptoExchange.Net
             catch (HttpRequestException requestException)
             {
                 var exceptionInfo = requestException.ToLogString();
-                log.Write(LogVerbosity.Warning, $"[{request.RequestId}] Request exception: " + exceptionInfo);
+                log.Write(LogLevel.Warning, $"[{request.RequestId}] Request exception: " + exceptionInfo);
                 return new WebCallResult<T>(null, null, default, new WebError(exceptionInfo));
             }
             catch (TaskCanceledException canceledException)
@@ -280,13 +281,13 @@ namespace CryptoExchange.Net
                 if (canceledException.CancellationToken == cancellationToken)
                 {
                     // Cancellation token cancelled
-                    log.Write(LogVerbosity.Warning, $"[{request.RequestId}] Request cancel requested");
+                    log.Write(LogLevel.Warning, $"[{request.RequestId}] Request cancel requested");
                     return new WebCallResult<T>(null, null, default, new CancellationRequestedError());
                 }
                 else
                 {
                     // Request timed out
-                    log.Write(LogVerbosity.Warning, $"[{request.RequestId}] Request timed out");
+                    log.Write(LogLevel.Warning, $"[{request.RequestId}] Request timed out");
                     return new WebCallResult<T>(null, null, default, new WebError($"[{request.RequestId}] Request timed out"));
                 }
             }

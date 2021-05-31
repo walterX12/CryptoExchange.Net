@@ -5,6 +5,7 @@ using System.Net.Http;
 using CryptoExchange.Net.Authentication;
 using CryptoExchange.Net.Interfaces;
 using CryptoExchange.Net.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace CryptoExchange.Net.Objects
 {
@@ -16,17 +17,22 @@ namespace CryptoExchange.Net.Objects
         /// <summary>
         /// The log verbosity
         /// </summary>
-        public LogVerbosity LogVerbosity { get; set; } = LogVerbosity.Info;
+        public LogLevel LogLevel { get; set; } = LogLevel.Information;
 
         /// <summary>
         /// The log writers
         /// </summary>
-        public List<TextWriter> LogWriters { get; set; } = new List<TextWriter> { new DebugTextWriter() };
+        public List<ILogger> LogWriters { get; set; } = new List<ILogger> { new DebugLogger() };
+
+        /// <summary>
+        /// If true, the CallResult and DataEvent object will also contain the originally received json data in the OriginalDaa property
+        /// </summary>
+        public bool OutputOriginalData { get; set; } = false;
 
         /// <inheritdoc />
         public override string ToString()
         {
-            return $"LogVerbosity: {LogVerbosity}, Writers: {LogWriters.Count}";
+            return $"LogLevel: {LogLevel}, Writers: {LogWriters.Count}, OutputOriginalData: {OutputOriginalData}";
         }
     }
 
@@ -177,7 +183,7 @@ namespace CryptoExchange.Net.Objects
             var copy = new T
             {
                 BaseAddress = BaseAddress,
-                LogVerbosity = LogVerbosity,
+                LogLevel = LogLevel,
                 Proxy = Proxy,
                 LogWriters = LogWriters,
                 RateLimiters = RateLimiters,
@@ -247,7 +253,7 @@ namespace CryptoExchange.Net.Objects
             var copy = new T
             {
                 BaseAddress = BaseAddress,
-                LogVerbosity = LogVerbosity,
+                LogLevel = LogLevel,
                 Proxy = Proxy,
                 LogWriters = LogWriters,
                 AutoReconnect = AutoReconnect,

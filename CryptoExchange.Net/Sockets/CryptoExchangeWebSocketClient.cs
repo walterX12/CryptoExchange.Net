@@ -1,6 +1,7 @@
 ﻿using CryptoExchange.Net.Interfaces;
 using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -155,7 +156,7 @@ namespace CryptoExchange.Net.Sockets
 
         public virtual async Task<bool> Connect()
         {
-            log.Write(LogVerbosity.Debug, $"Socket {Id} connecting");
+            log.Write(LogLevel.Debug, $"Socket {Id} connecting");
             try
             {
                 using CancellationTokenSource tcs = new CancellationTokenSource(TimeSpan.FromSeconds(10));                
@@ -165,13 +166,13 @@ namespace CryptoExchange.Net.Sockets
             }
             catch (Exception e)
             {
-                log.Write(LogVerbosity.Debug, $"Socket {Id} connection failed: " + e.Message);
+                log.Write(LogLevel.Debug, $"Socket {Id} connection failed: " + e.Message);
                 return false;
             }
 
-            log.Write(LogVerbosity.Debug, $"Socket {Id} connected");
+            log.Write(LogLevel.Debug, $"Socket {Id} connected");
             _sendTask = Task.Run(async () => await SendLoop().ConfigureAwait(false));
-            _receiveTask = ReceiveLoop();
+            _receiveTask = Task.Run(ReceiveLoop);
             if (Timeout != default)
                 _timeoutTask = Task.Run(CheckTimeout);
             return true;
@@ -189,7 +190,7 @@ namespace CryptoExchange.Net.Sockets
 
         public virtual async Task Close()
         {
-            log.Write(LogVerbosity.Debug, $"Socket {Id} closing");
+            log.Write(LogLevel.Debug, $"Socket {Id} closing");
             await CloseInternal(true, true, true).ConfigureAwait(false);
         }
         
@@ -217,7 +218,7 @@ namespace CryptoExchange.Net.Sockets
 
         public void Dispose()
         {
-            log.Write(LogVerbosity.Debug, $"Socket {Id} disposing");
+            log.Write(LogLevel.Debug, $"Socket {Id} disposing");
             _socket.Dispose();
             _ctsSource.Dispose();
 
@@ -229,7 +230,7 @@ namespace CryptoExchange.Net.Sockets
 
         public void Reset()
         {
-            log.Write(LogVerbosity.Debug, $"Socket {Id} resetting");
+            log.Write(LogLevel.Debug, $"Socket {Id} resetting");
             _ctsSource = new CancellationTokenSource();
             _closing = false;
             CreateSocket();
@@ -246,6 +247,7 @@ namespace CryptoExchange.Net.Sockets
             foreach (var header in headers)
                 _socket.Options.SetRequestHeader(header.Key, header.Value);
             _socket.Options.KeepAliveInterval = TimeSpan.FromSeconds(10);
+            _socket.Options.SetBuffer(1048576 * 5, 1048576 * 5);
         }
 
         private async Task SendLoop()
@@ -282,6 +284,7 @@ namespace CryptoExchange.Net.Sockets
         private async Task ReceiveLoop()
         {
             var buffer = new ArraySegment<byte>(new byte[4096]);
+            var received = 0;
             while (true)
             {
                 if (_closing)
@@ -295,6 +298,7 @@ namespace CryptoExchange.Net.Sockets
                     try
                     {
                         receiveResult = await _socket.ReceiveAsync(buffer, _ctsSource.Token).ConfigureAwait(false);
+                        received += receiveResult.Count;
                     }
                     catch (TaskCanceledException)
                     {
@@ -303,7 +307,7 @@ namespace CryptoExchange.Net.Sockets
                     }
                     catch (WebSocketException wse)
                     {
-                        // Connection closed unexpectedly                        
+                        // Connection closed unexpectedly        
                         Handle(errorHandlers, wse);
                         await CloseInternal(false, true, false).ConfigureAwait(false);
                         break;
@@ -371,7 +375,7 @@ namespace CryptoExchange.Net.Sockets
                 }
                 catch(Exception e)
                 {
-                    log.Write(LogVerbosity.Error, $"Socket {Id} unhandled exception during byte data interpretation: " + e.ToLogString());
+                    log.Write(LogLevel.Error, $"Socket {Id} unhandled exception during byte data interpretation: " + e.ToLogString());
                     return;
                 }
             }
@@ -386,7 +390,7 @@ namespace CryptoExchange.Net.Sockets
                 }
                 catch(Exception e)
                 {
-                    log.Write(LogVerbosity.Error, $"Socket {Id} unhandled exception during string data interpretation: " + e.ToLogString());
+                    log.Write(LogLevel.Error, $"Socket {Id} unhandled exception during string data interpretation: " + e.ToLogString());
                     return;
                 }
             }
@@ -397,7 +401,7 @@ namespace CryptoExchange.Net.Sockets
             }
             catch(Exception e)
             {
-                log.Write(LogVerbosity.Error, $"Socket {Id} unhandled exception during message processing: " + e.ToLogString());
+                log.Write(LogLevel.Error, $"Socket {Id} unhandled exception during message processing: " + e.ToLogString());
                 return;
             }
         }
@@ -415,7 +419,7 @@ namespace CryptoExchange.Net.Sockets
 
                 if (DateTime.UtcNow - LastActionTime > Timeout)
                 {
-                    log.Write(LogVerbosity.Warning, $"Socket {Id} No data received for {Timeout}, reconnecting socket");
+                    log.Write(LogLevel.Warning, $"Socket {Id} No data received for {Timeout}, reconnecting socket");
                     _ = Close().ConfigureAwait(false);
                     return;
                 }

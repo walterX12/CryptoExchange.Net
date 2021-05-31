@@ -234,6 +234,11 @@
             Should check objects for missing properties based on the model and the received JSON
             </summary>
         </member>
+        <member name="P:CryptoExchange.Net.BaseClient.OutputOriginalData">
+            <summary>
+            If true, the CallResult and DataEvent objects will also contain the originally received json data in the OriginalDaa property
+            </summary>
+        </member>
         <member name="F:CryptoExchange.Net.BaseClient.lastId">
             <summary>
             The last used id
@@ -1478,16 +1483,10 @@
             <param name="headers"></param>
             <returns></returns>
         </member>
-        <member name="T:CryptoExchange.Net.Logging.DebugTextWriter">
+        <member name="T:CryptoExchange.Net.Logging.DebugLogger">
             <summary>
             Default log writer, writes to debug
             </summary>
-        </member>
-        <member name="P:CryptoExchange.Net.Logging.DebugTextWriter.Encoding">
-            <inheritdoc />
-        </member>
-        <member name="M:CryptoExchange.Net.Logging.DebugTextWriter.WriteLine(System.String)">
-            <inheritdoc />
         </member>
         <member name="T:CryptoExchange.Net.Logging.Log">
             <summary>
@@ -1509,48 +1508,18 @@
             ctor
             </summary>
         </member>
-        <member name="M:CryptoExchange.Net.Logging.Log.UpdateWriters(System.Collections.Generic.List{System.IO.TextWriter})">
+        <member name="M:CryptoExchange.Net.Logging.Log.UpdateWriters(System.Collections.Generic.List{Microsoft.Extensions.Logging.ILogger})">
             <summary>
             Set the writers
             </summary>
             <param name="textWriters"></param>
         </member>
-        <member name="M:CryptoExchange.Net.Logging.Log.Write(CryptoExchange.Net.Logging.LogVerbosity,System.String)">
+        <member name="M:CryptoExchange.Net.Logging.Log.Write(Microsoft.Extensions.Logging.LogLevel,System.String)">
             <summary>
             Write a log entry
             </summary>
             <param name="logType"></param>
             <param name="message"></param>
-        </member>
-        <member name="T:CryptoExchange.Net.Logging.LogVerbosity">
-            <summary>
-            The log verbosity
-            </summary>
-        </member>
-        <member name="F:CryptoExchange.Net.Logging.LogVerbosity.Debug">
-            <summary>
-            Debug logging
-            </summary>
-        </member>
-        <member name="F:CryptoExchange.Net.Logging.LogVerbosity.Info">
-            <summary>
-            Info logging
-            </summary>
-        </member>
-        <member name="F:CryptoExchange.Net.Logging.LogVerbosity.Warning">
-            <summary>
-            Warning logging
-            </summary>
-        </member>
-        <member name="F:CryptoExchange.Net.Logging.LogVerbosity.Error">
-            <summary>
-            Error logging
-            </summary>
-        </member>
-        <member name="F:CryptoExchange.Net.Logging.LogVerbosity.None">
-            <summary>
-            None, used for disabling logging
-            </summary>
         </member>
         <member name="T:CryptoExchange.Net.Logging.ThreadSafeFileWriter">
             <summary>
@@ -1683,6 +1652,11 @@
             The data returned by the call
             </summary>
         </member>
+        <member name="P:CryptoExchange.Net.Objects.CallResult`1.OriginalData">
+            <summary>
+            The original data returned by the call, only available when `OutputOriginalData` is set to `true` in the client options
+            </summary>
+        </member>
         <member name="M:CryptoExchange.Net.Objects.CallResult`1.#ctor(`0,CryptoExchange.Net.Objects.Error)">
             <summary>
             ctor
@@ -1775,18 +1749,22 @@
             <param name="data"></param>
             <param name="error"></param>
         </member>
-        <member name="M:CryptoExchange.Net.Objects.WebCallResult`1.#ctor(CryptoExchange.Net.Objects.WebCallResult{`0})">
+        <member name="M:CryptoExchange.Net.Objects.WebCallResult`1.#ctor(System.Nullable{System.Net.HttpStatusCode},System.Collections.Generic.IEnumerable{System.Collections.Generic.KeyValuePair{System.String,System.Collections.Generic.IEnumerable{System.String}}},System.String,`0,CryptoExchange.Net.Objects.Error)">
             <summary>
-            Create new based on existing
+            ctor
             </summary>
-            <param name="callResult"></param>
+            <param name="code"></param>
+            <param name="originalData"></param>
+            <param name="responseHeaders"></param>
+            <param name="data"></param>
+            <param name="error"></param>
         </member>
-        <member name="M:CryptoExchange.Net.Objects.WebCallResult`1.CreateFrom``1(CryptoExchange.Net.Objects.WebCallResult{``0})">
+        <member name="M:CryptoExchange.Net.Objects.WebCallResult`1.As``1(``0)">
             <summary>
-            Create from a call result
+            Copy the WebCallResult to a new data type
             </summary>
-            <typeparam name="Y"></typeparam>
-            <param name="source"></param>
+            <typeparam name="K"></typeparam>
+            <param name="data"></param>
             <returns></returns>
         </member>
         <member name="M:CryptoExchange.Net.Objects.WebCallResult`1.CreateErrorResult(System.Nullable{System.Net.HttpStatusCode},System.Collections.Generic.IEnumerable{System.Collections.Generic.KeyValuePair{System.String,System.Collections.Generic.IEnumerable{System.String}}},CryptoExchange.Net.Objects.Error)">
@@ -2073,7 +2051,7 @@
             Base options
             </summary>
         </member>
-        <member name="P:CryptoExchange.Net.Objects.BaseOptions.LogVerbosity">
+        <member name="P:CryptoExchange.Net.Objects.BaseOptions.LogLevel">
             <summary>
             The log verbosity
             </summary>
@@ -2081,6 +2059,11 @@
         <member name="P:CryptoExchange.Net.Objects.BaseOptions.LogWriters">
             <summary>
             The log writers
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.Objects.BaseOptions.OutputOriginalData">
+            <summary>
+            If true, the CallResult and DataEvent object will also contain the originally received json data in the OriginalDaa property
             </summary>
         </member>
         <member name="M:CryptoExchange.Net.Objects.BaseOptions.ToString">
@@ -2927,7 +2910,7 @@
             <param name="byteHandler">Handler for byte data</param>
             <param name="stringHandler">Handler for string data</param>
         </member>
-        <member name="M:CryptoExchange.Net.SocketClient.Subscribe``1(System.Object,System.String,System.Boolean,System.Action{``0})">
+        <member name="M:CryptoExchange.Net.SocketClient.Subscribe``1(System.Object,System.String,System.Boolean,System.Action{CryptoExchange.Net.Sockets.DataEvent{``0}})">
             <summary>
             Subscribe
             </summary>
@@ -2938,7 +2921,7 @@
             <param name="dataHandler">The handler of update data</param>
             <returns></returns>
         </member>
-        <member name="M:CryptoExchange.Net.SocketClient.Subscribe``1(System.String,System.Object,System.String,System.Boolean,System.Action{``0})">
+        <member name="M:CryptoExchange.Net.SocketClient.Subscribe``1(System.String,System.Object,System.String,System.Boolean,System.Action{CryptoExchange.Net.Sockets.DataEvent{``0}})">
             <summary>
             Subscribe using a specif URL
             </summary>
@@ -3055,7 +3038,7 @@
             <param name="message"></param>
             <returns></returns>
         </member>
-        <member name="M:CryptoExchange.Net.SocketClient.AddSubscription``1(System.Object,System.String,System.Boolean,CryptoExchange.Net.Sockets.SocketConnection,System.Action{``0})">
+        <member name="M:CryptoExchange.Net.SocketClient.AddSubscription``1(System.Object,System.String,System.Boolean,CryptoExchange.Net.Sockets.SocketConnection,System.Action{CryptoExchange.Net.Sockets.DataEvent{``0}})">
             <summary>
             Add a subscription to a connection
             </summary>
@@ -3067,7 +3050,7 @@
             <param name="dataHandler">The handler of the data received</param>
             <returns></returns>
         </member>
-        <member name="M:CryptoExchange.Net.SocketClient.AddGenericHandler(System.String,System.Action{CryptoExchange.Net.Sockets.SocketConnection,Newtonsoft.Json.Linq.JToken})">
+        <member name="M:CryptoExchange.Net.SocketClient.AddGenericHandler(System.String,System.Action{CryptoExchange.Net.Sockets.MessageEvent})">
             <summary>
             Adds a generic message handler. Used for example to reply to ping requests
             </summary>
@@ -3207,6 +3190,83 @@
             <typeparam name="T"></typeparam>
             <param name="handlers"></param>
             <param name="data"></param>
+        </member>
+        <member name="T:CryptoExchange.Net.Sockets.DataEvent`1">
+            <summary>
+            An update received from a socket update subscription
+            </summary>
+            <typeparam name="T">The type of the data</typeparam>
+        </member>
+        <member name="P:CryptoExchange.Net.Sockets.DataEvent`1.Timestamp">
+            <summary>
+            The timestamp the data was received
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.Sockets.DataEvent`1.Topic">
+            <summary>
+            The topic of the update, what symbol/asset etc..
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.Sockets.DataEvent`1.OriginalData">
+            <summary>
+            The original data that was received, only available when TODO
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.Sockets.DataEvent`1.Data">
+            <summary>
+            The received data deserialized into an object
+            </summary>
+        </member>
+        <member name="M:CryptoExchange.Net.Sockets.DataEvent`1.As``1(``0)">
+            <summary>
+            Create a new DataEvent with data in t he from of K based on the current DataEvent. Topic, OriginalData and Timestamp will be retained
+            </summary>
+            <typeparam name="K">The type of the new data</typeparam>
+            <param name="data">The new data</param>
+            <returns></returns>
+        </member>
+        <member name="M:CryptoExchange.Net.Sockets.DataEvent`1.As``1(``0,System.String)">
+            <summary>
+            Create a new DataEvent with data in t he from of K based on the current DataEvent. Topic, OriginalData and Timestamp will be retained
+            </summary>
+            <typeparam name="K">The type of the new data</typeparam>
+            <param name="data">The new data</param>
+            <param name="topic">The new topic</param>
+            <returns></returns>
+        </member>
+        <member name="T:CryptoExchange.Net.Sockets.MessageEvent">
+            <summary>
+            Message received event
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.Sockets.MessageEvent.Connection">
+            <summary>
+            The connection the message was received on
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.Sockets.MessageEvent.JsonData">
+            <summary>
+            The json object of the data
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.Sockets.MessageEvent.OriginalData">
+            <summary>
+            The originally received string data
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.Sockets.MessageEvent.ReceivedTimestamp">
+            <summary>
+            The timestamp of when the data was received
+            </summary>
+        </member>
+        <member name="M:CryptoExchange.Net.Sockets.MessageEvent.#ctor(CryptoExchange.Net.Sockets.SocketConnection,Newtonsoft.Json.Linq.JToken,System.String,System.DateTime)">
+            <summary>
+            
+            </summary>
+            <param name="connection"></param>
+            <param name="jsonData"></param>
+            <param name="originalData"></param>
+            <param name="timestamp"></param>
         </member>
         <member name="T:CryptoExchange.Net.Sockets.SocketConnection">
             <summary>
@@ -3368,7 +3428,7 @@
             If the subscription has been confirmed
             </summary>
         </member>
-        <member name="M:CryptoExchange.Net.Sockets.SocketSubscription.CreateForRequest(System.Object,System.Boolean,System.Action{CryptoExchange.Net.Sockets.SocketConnection,Newtonsoft.Json.Linq.JToken})">
+        <member name="M:CryptoExchange.Net.Sockets.SocketSubscription.CreateForRequest(System.Object,System.Boolean,System.Action{CryptoExchange.Net.Sockets.MessageEvent})">
             <summary>
             Create SocketSubscription for a request
             </summary>
@@ -3377,7 +3437,7 @@
             <param name="dataHandler"></param>
             <returns></returns>
         </member>
-        <member name="M:CryptoExchange.Net.Sockets.SocketSubscription.CreateForIdentifier(System.String,System.Boolean,System.Action{CryptoExchange.Net.Sockets.SocketConnection,Newtonsoft.Json.Linq.JToken})">
+        <member name="M:CryptoExchange.Net.Sockets.SocketSubscription.CreateForIdentifier(System.String,System.Boolean,System.Action{CryptoExchange.Net.Sockets.MessageEvent})">
             <summary>
             Create SocketSubscription for an identifier
             </summary>

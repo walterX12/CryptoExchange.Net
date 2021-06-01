@@ -15,9 +15,9 @@ namespace CryptoExchange.Net.Objects
     public class BaseOptions
     {
         /// <summary>
-        /// The log verbosity
+        /// The log verbosity. 
         /// </summary>
-        public LogLevel LogLevel { get; set; } = LogLevel.Information;
+        public LogLevel? LogLevel { get; set; } = Microsoft.Extensions.Logging.LogLevel.Information;
 
         /// <summary>
         /// The log writers

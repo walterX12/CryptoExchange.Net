@@ -16,7 +16,7 @@ namespace CryptoExchange.Net.Logging
         /// <summary>
         /// The verbosity of the logging
         /// </summary>
-        public LogLevel Level { get; set; } = LogLevel.Information;
+        public LogLevel? Level { get; set; } = LogLevel.Information;
 
         /// <summary>
         /// Client name
@@ -48,10 +48,10 @@ namespace CryptoExchange.Net.Logging
         /// <param name="message"></param>
         public void Write(LogLevel logType, string message)
         {
-            if ((int)logType < (int)Level)
+            if (Level != null && (int)logType < (int)Level)
                 return;
 
-            var logMessage = $"{DateTime.Now:yyyy/MM/dd HH:mm:ss:fff} | {ClientName.PadRight(10)} | {logType} | {message}";
+            var logMessage = $"{ClientName,-10} | {message}";
             foreach (var writer in writers.ToList())
             {
                 try

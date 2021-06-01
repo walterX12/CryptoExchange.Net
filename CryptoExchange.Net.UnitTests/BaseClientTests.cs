@@ -65,7 +65,11 @@ namespace CryptoExchange.Net.UnitTests
         [TestCase(LogLevel.Debug, LogLevel.Warning, true)]
         [TestCase(LogLevel.Debug, LogLevel.Information, true)]
         [TestCase(LogLevel.Debug, LogLevel.Debug, true)]
-        public void SettingLogLevel_Should_RestrictLogging(LogLevel verbosity, LogLevel testVerbosity, bool expected)
+        [TestCase(null, LogLevel.Error, true)]
+        [TestCase(null, LogLevel.Warning, true)]
+        [TestCase(null, LogLevel.Information, true)]
+        [TestCase(null, LogLevel.Debug, true)]
+        public void SettingLogLevel_Should_RestrictLogging(LogLevel? verbosity, LogLevel testVerbosity, bool expected)
         {
             // arrange
             var logger = new TestStringLogger();

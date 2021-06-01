@@ -15,7 +15,7 @@ namespace CryptoExchange.Net.Objects
     public class BaseOptions
     {
         /// <summary>
-        /// The log verbosity. 
+        /// The minimum log level to output. Setting it to null will send all messages to the ILoggers. 
         /// </summary>
         public LogLevel? LogLevel { get; set; } = Microsoft.Extensions.Logging.LogLevel.Information;
 

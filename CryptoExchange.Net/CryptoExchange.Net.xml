@@ -510,9 +510,24 @@
             The asset fee was paid in
             </summary>
         </member>
+        <member name="P:CryptoExchange.Net.ExchangeInterfaces.ICommonTrade.CommonTradeTime">
+            <summary>
+            Trade time
+            </summary>
+        </member>
         <member name="T:CryptoExchange.Net.ExchangeInterfaces.IExchangeClient">
             <summary>
             Shared interface for exchange wrappers based on the CryptoExchange.Net package
+            </summary>
+        </member>
+        <member name="E:CryptoExchange.Net.ExchangeInterfaces.IExchangeClient.OnOrderPlaced">
+            <summary>
+            Should be triggered on order placing
+            </summary>
+        </member>
+        <member name="E:CryptoExchange.Net.ExchangeInterfaces.IExchangeClient.OnOrderCanceled">
+            <summary>
+            Should be triggered on order cancelling
             </summary>
         </member>
         <member name="M:CryptoExchange.Net.ExchangeInterfaces.IExchangeClient.GetSymbolName(System.String,System.String)">
@@ -659,6 +674,26 @@
             Sell order
             </summary>
         </member>
+        <member name="T:CryptoExchange.Net.ExchangeInterfaces.IExchangeClient.OrderStatus">
+            <summary>
+            Common order status
+            </summary>
+        </member>
+        <member name="F:CryptoExchange.Net.ExchangeInterfaces.IExchangeClient.OrderStatus.Active">
+            <summary>
+            placed and not fully filled order
+            </summary>
+        </member>
+        <member name="F:CryptoExchange.Net.ExchangeInterfaces.IExchangeClient.OrderStatus.Canceled">
+            <summary>
+            cancelled order
+            </summary>
+        </member>
+        <member name="F:CryptoExchange.Net.ExchangeInterfaces.IExchangeClient.OrderStatus.Filled">
+            <summary>
+            filled order
+            </summary>
+        </member>
         <member name="T:CryptoExchange.Net.ExchangeInterfaces.ICommonKline">
             <summary>
             Common kline
@@ -732,6 +767,11 @@
         <member name="P:CryptoExchange.Net.ExchangeInterfaces.ICommonOrder.CommonType">
             <summary>
             Type of the order
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.ExchangeInterfaces.ICommonOrder.CommonOrderTime">
+            <summary>
+            order time
             </summary>
         </member>
         <member name="T:CryptoExchange.Net.ExchangeInterfaces.ICommonOrderBook">

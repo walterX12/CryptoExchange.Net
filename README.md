@@ -293,6 +293,12 @@ static async Task GetExchangeData(IExchangeClient client)
 ````
 
 ## Release notes
+* Version 4.0.0-beta7 - 07 Jun 2021
+    * Added CommonOrderTime to IOrder
+    * Added OrdreStatus enum for IOrder
+    * Added OnOrderPlaced and OnOrderCanceled events on IExchangeClient
+    * Added CommonTradeTime to ICommonTrade
+
 * Version 4.0.0-beta6 - 01 jun 2021
     * Some logging adjustments
     * Fixed some async issues

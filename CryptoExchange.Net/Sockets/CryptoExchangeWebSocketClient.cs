@@ -247,7 +247,7 @@ namespace CryptoExchange.Net.Sockets
             foreach (var header in headers)
                 _socket.Options.SetRequestHeader(header.Key, header.Value);
             _socket.Options.KeepAliveInterval = TimeSpan.FromSeconds(10);
-            _socket.Options.SetBuffer(1048576 * 5, 1048576 * 5);
+            _socket.Options.SetBuffer(65536, 65536); // Setting it to anything bigger than 65536 throws an exception in .net framework
         }
 
         private async Task SendLoop()

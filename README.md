@@ -293,6 +293,9 @@ static async Task GetExchangeData(IExchangeClient client)
 ````
 
 ## Release notes
+* Version 4.0.0-beta8 - 08 Jun 2021
+    * Fixed exception socket buffer size in .net framework
+
 * Version 4.0.0-beta7 - 07 Jun 2021
     * Added CommonOrderTime to IOrder
     * Added OrdreStatus enum for IOrder

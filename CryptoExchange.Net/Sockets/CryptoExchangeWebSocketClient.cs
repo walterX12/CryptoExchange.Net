@@ -414,6 +414,7 @@ namespace CryptoExchange.Net.Sockets
         {
             while (true)
             {
+                log.Write(LogLevel.Debug, $"Socket {Id} Starting task checking for no data received for {Timeout}");
                 if (_socket.State != WebSocketState.Open)
                     return;
 

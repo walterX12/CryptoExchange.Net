@@ -388,12 +388,15 @@ namespace CryptoExchange.Net.OrderBook
                     var (prevBestBid, prevBestAsk) = BestOffers;
                     ProcessRangeUpdates(item.StartUpdateId, item.EndUpdateId, item.Bids, item.Asks);
 
+                    if (!asks.Any() || !bids.Any())
+                        return;
+
                     if (asks.First().Key < bids.First().Key)
                     {
                         log.Write(LogLevel.Warning, $"{Id} order book {Symbol} detected out of sync order book. Resyncing");
                         _ = subscription?.Reconnect();
                         return;
-                    }
+                    }                    
 
                     OnOrderBookUpdate?.Invoke((item.Bids, item.Asks));
                     CheckBestOffersChanged(prevBestBid, prevBestAsk);

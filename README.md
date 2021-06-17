@@ -293,6 +293,9 @@ static async Task GetExchangeData(IExchangeClient client)
 ````
 
 ## Release notes
+* Version 4.0.0-beta9 - 17 Jun 2021
+    * Small fixes
+
 * Version 4.0.0-beta8 - 08 Jun 2021
     * Fixed exception socket buffer size in .net framework
 

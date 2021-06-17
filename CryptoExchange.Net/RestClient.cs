@@ -253,7 +253,7 @@ namespace CryptoExchange.Net
                         responseStream.Close();
                         response.Close();
 
-                        return new WebCallResult<T>(statusCode, headers, desResult.Data, desResult.Error);
+                        return new WebCallResult<T>(statusCode, headers, OutputOriginalData ? desResult.OriginalData : null, desResult.Data, desResult.Error);
                     }
                 }
                 else

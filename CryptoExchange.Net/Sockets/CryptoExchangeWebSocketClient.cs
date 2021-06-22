@@ -7,8 +7,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Net.Security;
 using System.Net.WebSockets;
 using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -166,7 +168,7 @@ namespace CryptoExchange.Net.Sockets
             }
             catch (Exception e)
             {
-                log.Write(LogLevel.Debug, $"Socket {Id} connection failed: " + e.Message);
+                log.Write(LogLevel.Debug, $"Socket {Id} connection failed: " + e.ToLogString());
                 return false;
             }
 

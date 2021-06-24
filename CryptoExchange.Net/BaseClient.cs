@@ -17,7 +17,7 @@ using System.Threading.Tasks;
 namespace CryptoExchange.Net
 {
     /// <summary>
-    /// The base for all clients
+    /// The base for all clients, websocket client and rest client
     /// </summary>
     public abstract class BaseClient : IDisposable
     {
@@ -26,9 +26,9 @@ namespace CryptoExchange.Net
         /// </summary>
         public string BaseAddress { get; }
         /// <summary>
-        /// The name of the client
+        /// The name of the exchange the client is for
         /// </summary>
-        public string ClientName { get; }
+        public string ExchangeName { get; }
         /// <summary>
         /// The log object
         /// </summary>
@@ -38,7 +38,7 @@ namespace CryptoExchange.Net
         /// </summary>
         protected ApiProxy? apiProxy;
         /// <summary>
-        /// The auth provider
+        /// The authentication provider
         /// </summary>
         protected internal AuthenticationProvider? authProvider;
         /// <summary>
@@ -46,12 +46,11 @@ namespace CryptoExchange.Net
         /// </summary>
         public bool ShouldCheckObjects { get; set; }
         /// <summary>
-        /// If true, the CallResult and DataEvent objects will also contain the originally received json data in the OriginalDaa property
+        /// If true, the CallResult and DataEvent objects should also contain the originally received json data in the OriginalDaa property
         /// </summary>
         public bool OutputOriginalData { get; private set; }
-
         /// <summary>
-        /// The last used id
+        /// The last used id, use NextId() to get the next id and up this
         /// </summary>
         protected static int lastId;
         /// <summary>
@@ -59,6 +58,9 @@ namespace CryptoExchange.Net
         /// </summary>
         protected static object idLock = new object();
 
+        /// <summary>
+        /// A default serializer
+        /// </summary>
         private static readonly JsonSerializer defaultSerializer = JsonSerializer.Create(new JsonSerializerSettings
         {
             DateTimeZoneHandling = DateTimeZoneHandling.Utc,
@@ -66,34 +68,34 @@ namespace CryptoExchange.Net
         });
 
         /// <summary>
-        /// Last is used
+        /// Last id used
         /// </summary>
         public static int LastId => lastId;
 
         /// <summary>
         /// ctor
         /// </summary>
-        /// <param name="clientName"></param>
-        /// <param name="options"></param>
-        /// <param name="authenticationProvider"></param>
-        protected BaseClient(string clientName, ClientOptions options, AuthenticationProvider? authenticationProvider)
+        /// <param name="exchangeName">The name of the exchange this client is for</param>
+        /// <param name="options">The options for this client</param>
+        /// <param name="authenticationProvider">The authentication provider for this client (can be null if no credentials are provided)</param>
+        protected BaseClient(string exchangeName, ClientOptions options, AuthenticationProvider? authenticationProvider)
         {
-            log = new Log(clientName);
+            log = new Log(exchangeName);
             authProvider = authenticationProvider;
             log.UpdateWriters(options.LogWriters);
             log.Level = options.LogLevel;
 
-            ClientName = clientName;
+            ExchangeName = exchangeName;
             OutputOriginalData = options.OutputOriginalData;
             BaseAddress = options.BaseAddress;
             apiProxy = options.Proxy;
 
-            log.Write(LogLevel.Debug, $"Client configuration: {options}, CryptoExchange.Net: v{typeof(BaseClient).Assembly.GetName().Version}, {ClientName}.Net: v{GetType().Assembly.GetName().Version}");
+            log.Write(LogLevel.Debug, $"Client configuration: {options}, CryptoExchange.Net: v{typeof(BaseClient).Assembly.GetName().Version}, {ExchangeName}.Net: v{GetType().Assembly.GetName().Version}");
             ShouldCheckObjects = options.ShouldCheckObjects;
         }
 
         /// <summary>
-        /// Set the authentication provider
+        /// Set the authentication provider, can be used when manually setting the API credentials
         /// </summary>
         /// <param name="authenticationProvider"></param>
         protected void SetAuthenticationProvider(AuthenticationProvider authenticationProvider)
@@ -103,7 +105,7 @@ namespace CryptoExchange.Net
         }
 
         /// <summary>
-        /// Tries to parse the json data and returns a token
+        /// Tries to parse the json data and returns a JToken, validating the input not being empty and being valid json
         /// </summary>
         /// <param name="data">The data to parse</param>
         /// <returns></returns>
@@ -145,7 +147,7 @@ namespace CryptoExchange.Net
         /// <param name="data">The data to deserialize</param>
         /// <param name="checkObject">Whether or not the parsing should be checked for missing properties (will output data to the logging if log verbosity is Debug)</param>
         /// <param name="serializer">A specific serializer to use</param>
-        /// <param name="requestId">Id of the request</param>
+        /// <param name="requestId">Id of the request the data is returned from (used for grouping logging by request)</param>
         /// <returns></returns>
         protected CallResult<T> Deserialize<T>(string data, bool? checkObject = null, JsonSerializer? serializer = null, int? requestId = null)
         {
@@ -166,7 +168,7 @@ namespace CryptoExchange.Net
         /// <param name="obj">The data to deserialize</param>
         /// <param name="checkObject">Whether or not the parsing should be checked for missing properties (will output data to the logging if log verbosity is Debug)</param>
         /// <param name="serializer">A specific serializer to use</param>
-        /// <param name="requestId">A request identifier</param>
+        /// <param name="requestId">Id of the request the data is returned from (used for grouping logging by request)</param>
         /// <returns></returns>
         protected CallResult<T> Deserialize<T>(JToken obj, bool? checkObject = null, JsonSerializer? serializer = null, int? requestId = null)
         {
@@ -177,6 +179,8 @@ namespace CryptoExchange.Net
             {
                 if ((checkObject ?? ShouldCheckObjects)&& log.Level == LogLevel.Debug)
                 {
+                    // This checks the input JToken object against the class it is being serialized into and outputs any missing fields
+                    // in either the input or the class
                     try
                     {
                         if (obj is JObject o)
@@ -224,8 +228,8 @@ namespace CryptoExchange.Net
         /// <typeparam name="T">The type to deserialize into</typeparam>
         /// <param name="stream">The stream to deserialize</param>
         /// <param name="serializer">A specific serializer to use</param>
-        /// <param name="requestId">Id of the request</param>
-        /// <param name="elapsedMilliseconds">Milliseconds response time</param>
+        /// <param name="requestId">Id of the request the data is returned from (used for grouping logging by request)</param>
+        /// <param name="elapsedMilliseconds">Milliseconds response time for the request this stream is a response for</param>
         /// <returns></returns>
         protected async Task<CallResult<T>> Deserialize<T>(Stream stream, JsonSerializer? serializer = null, int? requestId = null, long? elapsedMilliseconds = null)
         {
@@ -234,7 +238,11 @@ namespace CryptoExchange.Net
 
             try
             {
+                // Let the reader keep the stream open so we're able to seek if needed. The calling method will close the stream.
                 using var reader = new StreamReader(stream, Encoding.UTF8, false, 512, true);
+
+                // If we have to output the original json data or output the data into the logging we'll have to read to full response
+                // in order to log/return the json data
                 if (OutputOriginalData || log.Level == LogLevel.Debug)
                 {
                     var data = await reader.ReadToEndAsync().ConfigureAwait(false);
@@ -245,6 +253,8 @@ namespace CryptoExchange.Net
                     return result;
                 }
                 
+                // If we don't have to keep track of the original json data we can use the JsonTextReader to deserialize the stream directly
+                // into the desired object, which has increased performance over first reading the string value into memory and deserializing from that
                 using var jsonReader = new JsonTextReader(reader);
                 return new CallResult<T>(serializer.Deserialize<T>(jsonReader), null);
             }
@@ -253,6 +263,7 @@ namespace CryptoExchange.Net
                 string data;
                 if (stream.CanSeek)
                 {
+                    // If we can seek the stream rewind it so we can retrieve the original data that was sent
                     stream.Seek(0, SeekOrigin.Begin);
                     data = await ReadStream(stream).ConfigureAwait(false);
                 }
@@ -408,7 +419,7 @@ namespace CryptoExchange.Net
         }
 
         /// <summary>
-        /// Generate a unique id
+        /// Generate a new unique id. The id is staticly stored so it is guarenteed to be unique across different client instances
         /// </summary>
         /// <returns></returns>
         protected int NextId()

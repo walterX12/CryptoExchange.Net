@@ -61,11 +61,11 @@ namespace CryptoExchange.Net.Sockets
         public bool Connected { get; private set; }
 
         /// <summary>
-        /// The socket
+        /// The underlying socket
         /// </summary>
         public IWebsocket Socket { get; set; }
         /// <summary>
-        /// If should reconnect upon closing
+        /// If the socket should be reconnected upon closing
         /// </summary>
         public bool ShouldReconnect { get; set; }
 
@@ -138,6 +138,10 @@ namespace CryptoExchange.Net.Sockets
             };
         }
         
+        /// <summary>
+        /// Process a message received by the socket
+        /// </summary>
+        /// <param name="data"></param>
         private void ProcessMessage(string data)
         {
             var timestamp = DateTime.UtcNow;
@@ -160,6 +164,7 @@ namespace CryptoExchange.Net.Sockets
 			{
                 requests = pendingRequests.ToArray();
 			}
+            // Check if this message is an answer on any pending requests
             foreach (var pendingRequest in requests)
             {
                 if (pendingRequest.Check(tokenData))
@@ -179,6 +184,7 @@ namespace CryptoExchange.Net.Sockets
                 }
             }
             
+            // Message was not a request response, check data handlers
             if (!HandleData(messageEvent) && !handledResponse)
             {
                 if (!socketClient.UnhandledMessageExpected)
@@ -188,7 +194,7 @@ namespace CryptoExchange.Net.Sockets
         }
 
         /// <summary>
-        /// Add subscription
+        /// Add subscription to this connection
         /// </summary>
         /// <param name="subscription"></param>
         public void AddSubscription(SocketSubscription subscription)
@@ -204,6 +210,8 @@ namespace CryptoExchange.Net.Sockets
             { 
                 var handled = false;
                 var sw = Stopwatch.StartNew();
+
+                // Loop the subscriptions to check if any of them signal us that the message is for them
                 lock (subscriptionLock)
                 {
                     foreach (var subscription in subscriptions.ToList())
@@ -246,9 +254,9 @@ namespace CryptoExchange.Net.Sockets
         }
 
         /// <summary>
-        /// Send data
+        /// Send data and wait for an answer
         /// </summary>
-        /// <typeparam name="T">The data type</typeparam>
+        /// <typeparam name="T">The data type expected in response</typeparam>
         /// <param name="obj">The object to send</param>
         /// <param name="timeout">The timeout for response</param>
         /// <param name="handler">The response handler</param>
@@ -265,7 +273,7 @@ namespace CryptoExchange.Net.Sockets
         }
 
         /// <summary>
-        /// Send data to the websocket
+        /// Send data over the websocket connection
         /// </summary>
         /// <typeparam name="T">The type of the object to send</typeparam>
         /// <param name="obj">The object to send</param>
@@ -279,7 +287,7 @@ namespace CryptoExchange.Net.Sockets
         }
 
         /// <summary>
-        /// Send string data to the websocket
+        /// Send string data over the websocket connection
         /// </summary>
         /// <param name="data">The data to send</param>
         public virtual void Send(string data)
@@ -305,6 +313,7 @@ namespace CryptoExchange.Net.Sockets
                 {
                     while (ShouldReconnect)
                     {
+                        // Wait a bit before attempting reconnect
                         await Task.Delay(socketClient.ReconnectInterval).ConfigureAwait(false);
                         if (!ShouldReconnect)
                         {
@@ -320,6 +329,7 @@ namespace CryptoExchange.Net.Sockets
                             continue;
                         }
 
+                        // Successfully reconnected
                         var time = DisconnectTime;
                         DisconnectTime = null;
 
@@ -345,6 +355,7 @@ namespace CryptoExchange.Net.Sockets
             }
             else
             {
+                // No reconnecting needed
                 log.Write(LogLevel.Information, $"Socket {Socket.Id} closed");
                 if (socketClient.sockets.ContainsKey(Socket.Id))
                     socketClient.sockets.TryRemove(Socket.Id, out _);
@@ -362,6 +373,7 @@ namespace CryptoExchange.Net.Sockets
         {
             if (Authenticated)
             {
+                // If we reconnected a authenticated connection we need to re-authenticate
                 var authResult = await socketClient.AuthenticateSocket(this).ConfigureAwait(false);
                 if (!authResult)
                 {
@@ -372,12 +384,14 @@ namespace CryptoExchange.Net.Sockets
                 log.Write(LogLevel.Debug, $"Socket {Socket.Id} authentication succeeded on reconnected socket.");
             }
 
+            // Get a list of all subscriptions on the socket
             List<SocketSubscription> subscriptionList;
             lock (subscriptionLock)
                 subscriptionList = subscriptions.Where(h => h.Request != null).ToList();
 
             var success = true;
             var taskList = new List<Task>();
+            // Foreach subscription which is subscribed by a subscription request we will need to resend that request to resubscribe
             foreach (var subscription in subscriptionList)
             {
                 var task = socketClient.SubscribeAndWait(this, subscription.Request!, subscription).ContinueWith(t =>
@@ -415,7 +429,7 @@ namespace CryptoExchange.Net.Sockets
         }
 
         /// <summary>
-        /// Close the subscription
+        /// Close a subscription on this connection. If all subscriptions on this connection are closed the connection gets closed as well
         /// </summary>
         /// <param name="subscription">Subscription to close</param>
         /// <returns></returns>

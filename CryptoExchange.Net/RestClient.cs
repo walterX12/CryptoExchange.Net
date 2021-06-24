@@ -7,13 +7,11 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using CryptoExchange.Net.Authentication;
 using CryptoExchange.Net.Interfaces;
-using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
 using CryptoExchange.Net.RateLimiter;
 using CryptoExchange.Net.Requests;
@@ -34,9 +32,10 @@ namespace CryptoExchange.Net
         public IRequestFactory RequestFactory { get; set; } = new RequestFactory();
 
         /// <summary>
-        /// Where to place post parameters
+        /// Where to place post parameters by default
         /// </summary>
         protected PostParameters postParametersPosition = PostParameters.InBody;
+
         /// <summary>
         /// Request body content type
         /// </summary>
@@ -48,21 +47,21 @@ namespace CryptoExchange.Net
         protected bool manualParseError = false;
 
         /// <summary>
-        /// How to serialize array parameters
+        /// How to serialize array parameters when making requests
         /// </summary>
         protected ArrayParametersSerialization arraySerialization = ArrayParametersSerialization.Array;
 
         /// <summary>
-        /// What request body should be when no data is send
+        /// What request body should be set when no data is send (only used in combination with postParametersPosition.InBody)
         /// </summary>
         protected string requestBodyEmptyContent = "{}";
 
         /// <summary>
-        /// Timeout for requests
+        /// Timeout for requests. This setting is ignored when injecting a HttpClient in the options, requests timeouts should be set on the client then.
         /// </summary>
         public TimeSpan RequestTimeout { get; }
         /// <summary>
-        /// Rate limiting behaviour
+        /// What should happen when running into a rate limit
         /// </summary>
         public RateLimitingBehaviour RateLimitBehaviour { get; }
         /// <summary>
@@ -70,17 +69,17 @@ namespace CryptoExchange.Net
         /// </summary>
         public IEnumerable<IRateLimiter> RateLimiters { get; private set; }
         /// <summary>
-        /// Total requests made
+        /// Total requests made by this client
         /// </summary>
         public int TotalRequestsMade { get; private set; }
 
         /// <summary>
         /// ctor
         /// </summary>
-        /// <param name="clientName"></param>
-        /// <param name="exchangeOptions"></param>
-        /// <param name="authenticationProvider"></param>
-        protected RestClient(string clientName, RestClientOptions exchangeOptions, AuthenticationProvider? authenticationProvider) : base(clientName, exchangeOptions, authenticationProvider)
+        /// <param name="exchangeName">The name of the exchange this client is for</param>
+        /// <param name="exchangeOptions">The options for this client</param>
+        /// <param name="authenticationProvider">The authentication provider for this client (can be null if no credentials are provided)</param>
+        protected RestClient(string exchangeName, RestClientOptions exchangeOptions, AuthenticationProvider? authenticationProvider) : base(exchangeName, exchangeOptions, authenticationProvider)
         {
             if (exchangeOptions == null)
                 throw new ArgumentNullException(nameof(exchangeOptions));
@@ -159,9 +158,9 @@ namespace CryptoExchange.Net
         }
 
         /// <summary>
-        /// Execute a request
+        /// Execute a request to the uri and deserialize the response into the provided type parameter
         /// </summary>
-        /// <typeparam name="T">The expected result type</typeparam>
+        /// <typeparam name="T">The type to deserialize into</typeparam>
         /// <param name="uri">The uri to send the request to</param>
         /// <param name="method">The method of the request</param>
         /// <param name="cancellationToken">Cancellation token</param>
@@ -210,7 +209,7 @@ namespace CryptoExchange.Net
         }
 
         /// <summary>
-        /// Executes the request and returns the string result
+        /// Executes the request and returns the result deserialized into the type parameter class
         /// </summary>
         /// <param name="request">The request object to execute</param>
         /// <param name="deserializer">The JsonSerializer to use for deserialization</param>
@@ -229,6 +228,8 @@ namespace CryptoExchange.Net
                 var responseStream = await response.GetResponseStream().ConfigureAwait(false);
                 if (response.IsSuccessStatusCode)
                 {
+                    // If we have to manually parse error responses (can't rely on HttpStatusCode) we'll need to read the full
+                    // response before being able to deserialize it into the resulting type since we don't know if it an error response or data
                     if (manualParseError)
                     {
                         using var reader = new StreamReader(responseStream);
@@ -237,18 +238,23 @@ namespace CryptoExchange.Net
                         response.Close();
                         log.Write(LogLevel.Debug, $"[{request.RequestId}] Response received in {sw.ElapsedMilliseconds}ms: {data}");
 
+                        // Validate if it is valid json. Sometimes other data will be returned, 502 error html pages for example
                         var parseResult = ValidateJson(data);
                         if (!parseResult.Success)
                             return WebCallResult<T>.CreateErrorResult(response.StatusCode, response.ResponseHeaders, parseResult.Error!);
+
+                        // Let the library implementation see if it is an error response, and if so parse the error
                         var error = await TryParseError(parseResult.Data).ConfigureAwait(false);
                         if (error != null)
                             return WebCallResult<T>.CreateErrorResult(response.StatusCode, response.ResponseHeaders, error);
 
+                        // Not an error, so continue deserializing
                         var deserializeResult = Deserialize<T>(parseResult.Data, null, deserializer, request.RequestId);
                         return new WebCallResult<T>(response.StatusCode, response.ResponseHeaders, OutputOriginalData ? data: null, deserializeResult.Data, deserializeResult.Error);
                     }
                     else
                     {
+                        // Success status code, and we don't have to check for errors. Continue deserializing directly from the stream
                         var desResult = await Deserialize<T>(responseStream, deserializer, request.RequestId, sw.ElapsedMilliseconds).ConfigureAwait(false);
                         responseStream.Close();
                         response.Close();
@@ -258,6 +264,7 @@ namespace CryptoExchange.Net
                 }
                 else
                 {
+                    // Http status code indicates error
                     using var reader = new StreamReader(responseStream);
                     var data = await reader.ReadToEndAsync().ConfigureAwait(false);
                     log.Write(LogLevel.Debug, $"[{request.RequestId}] Error received: {data}");
@@ -272,6 +279,7 @@ namespace CryptoExchange.Net
             }
             catch (HttpRequestException requestException)
             {
+                // Request exception, can't reach server for instance
                 var exceptionInfo = requestException.ToLogString();
                 log.Write(LogLevel.Warning, $"[{request.RequestId}] Request exception: " + exceptionInfo);
                 return new WebCallResult<T>(null, null, default, new WebError(exceptionInfo));
@@ -280,7 +288,7 @@ namespace CryptoExchange.Net
             {
                 if (canceledException.CancellationToken == cancellationToken)
                 {
-                    // Cancellation token cancelled
+                    // Cancellation token cancelled by caller
                     log.Write(LogLevel.Warning, $"[{request.RequestId}] Request cancel requested");
                     return new WebCallResult<T>(null, null, default, new CancellationRequestedError());
                 }
@@ -295,7 +303,8 @@ namespace CryptoExchange.Net
 
         /// <summary>
         /// Can be used to parse an error even though response status indicates success. Some apis always return 200 OK, even though there is an error.
-        /// This can be used together with ManualParseError to check if it is an error before deserializing to an object
+        /// When setting manualParseError to true this method will be called for each response to be able to check if the response is an error or not.
+        /// If the response is an error this method should return the parsed error, else it should return null
         /// </summary>
         /// <param name="data">Received data</param>
         /// <returns>Null if not an error, Error otherwise</returns>
@@ -350,20 +359,22 @@ namespace CryptoExchange.Net
         }
 
         /// <summary>
-        /// Writes the parameters of the request to the request object, either in the query string or the request body
+        /// Writes the parameters of the request to the request object body
         /// </summary>
-        /// <param name="request"></param>
-        /// <param name="parameters"></param>
-        /// <param name="contentType"></param>
+        /// <param name="request">The request to set the parameters on</param>
+        /// <param name="parameters">The parameters to set</param>
+        /// <param name="contentType">The content type of the data</param>
         protected virtual void WriteParamBody(IRequest request, Dictionary<string, object> parameters, string contentType)
         {
             if (requestBodyFormat == RequestBodyFormat.Json)
             {
+                // Write the parameters as json in the body
                 var stringData = JsonConvert.SerializeObject(parameters.OrderBy(p => p.Key).ToDictionary(p => p.Key, p => p.Value));
                 request.SetContent(stringData, contentType);
             }
             else if (requestBodyFormat == RequestBodyFormat.FormData)
             {
+                // Write the parameters as form data in the body
                 var formData = HttpUtility.ParseQueryString(string.Empty);
                 foreach (var kvp in parameters.OrderBy(p => p.Key))
                 {

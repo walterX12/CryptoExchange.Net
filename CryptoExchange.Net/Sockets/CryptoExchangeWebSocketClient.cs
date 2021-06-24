@@ -201,6 +201,9 @@ namespace CryptoExchange.Net.Sockets
             if (_closing)
                 return;
 
+            if(!closeSocket)
+                log.Write(LogLevel.Debug, $"Socket {Id} handling closed socket");
+
             _closing = true;
             var tasksToAwait = new List<Task>();
             if(closeSocket)
@@ -215,6 +218,7 @@ namespace CryptoExchange.Net.Sockets
                 tasksToAwait.Add(_timeoutTask);
 
             await Task.WhenAll(tasksToAwait).ConfigureAwait(false);
+            log.Write(LogLevel.Debug, $"Socket {Id} closed");
             Handle(closeHandlers);
         }
 
@@ -414,9 +418,9 @@ namespace CryptoExchange.Net.Sockets
         /// <returns></returns>
         protected async Task CheckTimeout()
         {
+            log.Write(LogLevel.Debug, $"Socket {Id} Starting task checking for no data received for {Timeout}");
             while (true)
             {
-                log.Write(LogLevel.Debug, $"Socket {Id} Starting task checking for no data received for {Timeout}");
                 if (_socket.State != WebSocketState.Open)
                     return;
 

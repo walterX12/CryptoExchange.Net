@@ -17,6 +17,9 @@ using System.Threading.Tasks;
 
 namespace CryptoExchange.Net.Sockets
 {
+    /// <summary>
+    /// A wrapper around the ClientWebSocket
+    /// </summary>
     public class CryptoExchangeWebSocketClient : IWebsocket
     {
         internal static int lastStreamId;
@@ -39,40 +42,69 @@ namespace CryptoExchange.Net.Sockets
         protected Log log;
 
         /// <summary>
-        /// Error handlers
+        /// Handlers for when an error happens on the socket
         /// </summary>
         protected readonly List<Action<Exception>> errorHandlers = new List<Action<Exception>>();
         /// <summary>
-        /// Open handlers
+        /// Handlers for when the socket connection is opened
         /// </summary>
         protected readonly List<Action> openHandlers = new List<Action>();
         /// <summary>
-        /// Close handlers
+        /// Handlers for when the connection is closed
         /// </summary>
         protected readonly List<Action> closeHandlers = new List<Action>();
         /// <summary>
-        /// Message handlers
+        /// Handlers for when a message is received
         /// </summary>
         protected readonly List<Action<string>> messageHandlers = new List<Action<string>>();
 
+        /// <summary>
+        /// The id of this socket
+        /// </summary>
         public int Id { get; }
 
+        /// <inheritdoc />
         public string? Origin { get; set; }
+        /// <summary>
+        /// Whether this socket is currently reconnecting
+        /// </summary>
         public bool Reconnecting { get; set; }
+        /// <summary>
+        /// The timestamp this socket has been active for the last time
+        /// </summary>
         public DateTime LastActionTime { get; private set; }
 
+        /// <summary>
+        /// Delegate used for processing byte data received from socket connections before it is processed by handlers
+        /// </summary>
         public Func<byte[], string>? DataInterpreterBytes { get; set; }
+        /// <summary>
+        /// Delegate used for processing string data received from socket connections before it is processed by handlers
+        /// </summary>
         public Func<string, string>? DataInterpreterString { get; set; }
-
+        /// <summary>
+        /// Url this socket connects to
+        /// </summary>
         public string Url { get; }
-
+        /// <summary>
+        /// If the connection is closed
+        /// </summary>
         public bool IsClosed => _socket.State == WebSocketState.Closed;
 
+        /// <summary>
+        /// If the connection is open
+        /// </summary>
         public bool IsOpen => _socket.State == WebSocketState.Open;
 
-        public SslProtocols SSLProtocols { get; set; } //TODO
+        /// <summary>
+        /// Ssl protocols supported. NOT USED BY THIS IMPLEMENTATION
+        /// </summary>
+        public SslProtocols SSLProtocols { get; set; }
 
         private Encoding _encoding = Encoding.UTF8;
+        /// <summary>
+        /// Encoding used for decoding the received bytes into a string
+        /// </summary>
         public Encoding? Encoding
         {
             get => _encoding;
@@ -83,10 +115,13 @@ namespace CryptoExchange.Net.Sockets
             }
         }
 
+        /// <summary>
+        /// The timespan no data is received on the socket. If no data is received within this time an error is generated
+        /// </summary>
         public TimeSpan Timeout { get; set; }
 
         /// <summary>
-        /// On close
+        /// Socket closed event
         /// </summary>
         public event Action OnClose
         {
@@ -94,7 +129,7 @@ namespace CryptoExchange.Net.Sockets
             remove => closeHandlers.Remove(value);
         }
         /// <summary>
-        /// On message
+        /// Socket message received event
         /// </summary>
         public event Action<string> OnMessage
         {
@@ -102,7 +137,7 @@ namespace CryptoExchange.Net.Sockets
             remove => messageHandlers.Remove(value);
         }
         /// <summary>
-        /// On error
+        /// Socket error event
         /// </summary>
         public event Action<Exception> OnError
         {
@@ -110,7 +145,7 @@ namespace CryptoExchange.Net.Sockets
             remove => errorHandlers.Remove(value);
         }
         /// <summary>
-        /// On open
+        /// Socket opened event
         /// </summary>
         public event Action OnOpen
         {
@@ -121,8 +156,8 @@ namespace CryptoExchange.Net.Sockets
         /// <summary>
         /// ctor
         /// </summary>
-        /// <param name="log"></param>
-        /// <param name="url"></param>
+        /// <param name="log">The log object to use</param>
+        /// <param name="url">The url the socket should connect to</param>
         public CryptoExchangeWebSocketClient(Log log, string url) : this(log, url, new Dictionary<string, string>(), new Dictionary<string, string>())
         {
         }
@@ -130,10 +165,10 @@ namespace CryptoExchange.Net.Sockets
         /// <summary>
         /// ctor
         /// </summary>
-        /// <param name="log"></param>
-        /// <param name="url"></param>
-        /// <param name="cookies"></param>
-        /// <param name="headers"></param>
+        /// <param name="log">The log object to use</param>
+        /// <param name="url">The url the socket should connect to</param>
+        /// <param name="cookies">Cookies to sent in the socket connection request</param>
+        /// <param name="headers">Headers to sent in the socket connection request</param>
         public CryptoExchangeWebSocketClient(Log log, string url, IDictionary<string, string> cookies, IDictionary<string, string> headers)
         {
             Id = NextStreamId();
@@ -149,6 +184,10 @@ namespace CryptoExchange.Net.Sockets
             CreateSocket();
         }
 
+        /// <summary>
+        /// Set a proxy to use. Should be set before connecting
+        /// </summary>
+        /// <param name="proxy"></param>
         public virtual void SetProxy(ApiProxy proxy)
         {
             _socket.Options.Proxy = new WebProxy(proxy.Host, proxy.Port);
@@ -156,6 +195,10 @@ namespace CryptoExchange.Net.Sockets
                 _socket.Options.Proxy.Credentials = new NetworkCredential(proxy.Login, proxy.Password);
         }
 
+        /// <summary>
+        /// Connect the websocket
+        /// </summary>
+        /// <returns>True if successfull</returns>
         public virtual async Task<bool> Connect()
         {
             log.Write(LogLevel.Debug, $"Socket {Id} connecting");
@@ -180,6 +223,10 @@ namespace CryptoExchange.Net.Sockets
             return true;
         }
 
+        /// <summary>
+        /// Send data over the websocket
+        /// </summary>
+        /// <param name="data">Data to send</param>
         public virtual void Send(string data)
         {
             if (_socket.State != WebSocketState.Open)
@@ -190,12 +237,23 @@ namespace CryptoExchange.Net.Sockets
             _sendEvent.Set();
         }
 
+        /// <summary>
+        /// Close the websocket
+        /// </summary>
+        /// <returns></returns>
         public virtual async Task Close()
         {
             log.Write(LogLevel.Debug, $"Socket {Id} closing");
             await CloseInternal(true, true, true).ConfigureAwait(false);
         }
         
+        /// <summary>
+        /// Internal close method, will wait for each task to complete to gracefully close
+        /// </summary>
+        /// <param name="closeSocket"></param>
+        /// <param name="waitSend"></param>
+        /// <param name="waitReceive"></param>
+        /// <returns></returns>
         private async Task CloseInternal(bool closeSocket, bool waitSend, bool waitReceive)
         {
             if (_closing)
@@ -222,6 +280,9 @@ namespace CryptoExchange.Net.Sockets
             Handle(closeHandlers);
         }
 
+        /// <summary>
+        /// Dispose the socket
+        /// </summary>
         public void Dispose()
         {
             log.Write(LogLevel.Debug, $"Socket {Id} disposing");
@@ -234,6 +295,9 @@ namespace CryptoExchange.Net.Sockets
             messageHandlers.Clear();
         }
 
+        /// <summary>
+        /// Reset the socket so a new connection can be attempted after it has been connected before
+        /// </summary>
         public void Reset()
         {
             log.Write(LogLevel.Debug, $"Socket {Id} resetting");
@@ -242,6 +306,9 @@ namespace CryptoExchange.Net.Sockets
             CreateSocket();
         }
         
+        /// <summary>
+        /// Create the socket object
+        /// </summary>
         private void CreateSocket()
         {
             var cookieContainer = new CookieContainer();
@@ -256,6 +323,10 @@ namespace CryptoExchange.Net.Sockets
             _socket.Options.SetBuffer(65536, 65536); // Setting it to anything bigger than 65536 throws an exception in .net framework
         }
 
+        /// <summary>
+        /// Loop for sending data
+        /// </summary>
+        /// <returns></returns>
         private async Task SendLoop()
         {
             while (true)
@@ -287,6 +358,10 @@ namespace CryptoExchange.Net.Sockets
             }
         }
 
+        /// <summary>
+        /// Loop for receiving and reassembling data
+        /// </summary>
+        /// <returns></returns>
         private async Task ReceiveLoop()
         {
             var buffer = new ArraySegment<byte>(new byte[4096]);
@@ -328,7 +403,7 @@ namespace CryptoExchange.Net.Sockets
 
                     if (!receiveResult.EndOfMessage)
                     {
-                        // We received data, but it is not complete, write it to a memory stream
+                        // We received data, but it is not complete, write it to a memory stream for reassembling
                         multiPartMessage = true;
                         if (memoryStream == null)
                             memoryStream = new MemoryStream();
@@ -340,7 +415,7 @@ namespace CryptoExchange.Net.Sockets
                             // Received a complete message and it's not multi part
                             HandleMessage(buffer.Array, buffer.Offset, receiveResult.Count, receiveResult.MessageType);
                         else
-                            // Received the end of a multipart message, write to memory stream
+                            // Received the end of a multipart message, write to memory stream for reassembling
                             await memoryStream!.WriteAsync(buffer.Array, buffer.Offset, receiveResult.Count).ConfigureAwait(false);
                         break;
                     }
@@ -367,6 +442,13 @@ namespace CryptoExchange.Net.Sockets
             }
         }
 
+        /// <summary>
+        /// Handles the message
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="offset"></param>
+        /// <param name="count"></param>
+        /// <param name="messageType"></param>
         private void HandleMessage(byte[] data, int offset, int count, WebSocketMessageType messageType)
         {
             string strData;
@@ -413,7 +495,7 @@ namespace CryptoExchange.Net.Sockets
         }
 
         /// <summary>
-        /// Checks if timed out
+        /// Checks if there is no data received for a period longer than the specified timeout
         /// </summary>
         /// <returns></returns>
         protected async Task CheckTimeout()
@@ -443,7 +525,7 @@ namespace CryptoExchange.Net.Sockets
         }
 
         /// <summary>
-        /// Handle
+        /// Helper to invoke handlers
         /// </summary>
         /// <param name="handlers"></param>
         protected void Handle(List<Action> handlers)
@@ -454,7 +536,7 @@ namespace CryptoExchange.Net.Sockets
         }
 
         /// <summary>
-        /// Handle
+        /// Helper to invoke handlers
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="handlers"></param>
@@ -466,6 +548,10 @@ namespace CryptoExchange.Net.Sockets
                 handle?.Invoke(data);
         }
 
+        /// <summary>
+        /// Get the next identifier
+        /// </summary>
+        /// <returns></returns>
         private static int NextStreamId()
         {
             lock (streamIdLock)

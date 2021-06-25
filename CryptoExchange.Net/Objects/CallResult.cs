@@ -10,9 +10,10 @@ namespace CryptoExchange.Net.Objects
     public class CallResult
     {
         /// <summary>
-        /// An error if the call didn't succeed
+        /// An error if the call didn't succeed, will always be filled if Success = false
         /// </summary>
         public Error? Error { get; internal set; }
+
         /// <summary>
         /// Whether the call was successful
         /// </summary>
@@ -54,7 +55,7 @@ namespace CryptoExchange.Net.Objects
     public class CallResult<T>: CallResult
     {
         /// <summary>
-        /// The data returned by the call
+        /// The data returned by the call, only available when Success = true
         /// </summary>
         public T Data { get; internal set; }
 
@@ -137,9 +138,9 @@ namespace CryptoExchange.Net.Objects
         /// <summary>
         /// ctor
         /// </summary>
-        /// <param name="code"></param>
-        /// <param name="responseHeaders"></param>
-        /// <param name="error"></param>
+        /// <param name="code">Status code</param>
+        /// <param name="responseHeaders">Response headers</param>
+        /// <param name="error">Error</param>
         public WebCallResult(
             HttpStatusCode? code,
             IEnumerable<KeyValuePair<string, IEnumerable<string>>>? responseHeaders, Error? error) : base(error)
@@ -151,9 +152,9 @@ namespace CryptoExchange.Net.Objects
         /// <summary>
         /// Create an error result
         /// </summary>
-        /// <param name="code"></param>
-        /// <param name="responseHeaders"></param>
-        /// <param name="error"></param>
+        /// <param name="code">Status code</param>
+        /// <param name="responseHeaders">Response headers</param>
+        /// <param name="error">Error</param>
         /// <returns></returns>
         public static WebCallResult CreateErrorResult(HttpStatusCode? code, IEnumerable<KeyValuePair<string, IEnumerable<string>>>? responseHeaders, Error error)
         {

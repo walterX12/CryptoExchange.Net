@@ -17,7 +17,7 @@ namespace CryptoExchange.Net.Sockets
         /// </summary>
         public string? Topic { get; set; }
         /// <summary>
-        /// The original data that was received, only available when TODO
+        /// The original data that was received, only available when OutputOriginalData is set to true in the client options
         /// </summary>
         public string? OriginalData { get; set; }
         /// <summary>
@@ -47,7 +47,7 @@ namespace CryptoExchange.Net.Sockets
         }
 
         /// <summary>
-        /// Create a new DataEvent with data in t he from of K based on the current DataEvent. Topic, OriginalData and Timestamp will be retained
+        /// Create a new DataEvent with data in the from of type K based on the current DataEvent. Topic, OriginalData and Timestamp will be copied over
         /// </summary>
         /// <typeparam name="K">The type of the new data</typeparam>
         /// <param name="data">The new data</param>
@@ -58,7 +58,7 @@ namespace CryptoExchange.Net.Sockets
         }
 
         /// <summary>
-        /// Create a new DataEvent with data in t he from of K based on the current DataEvent. Topic, OriginalData and Timestamp will be retained
+        /// Create a new DataEvent with data in the from of type K based on the current DataEvent. OriginalData and Timestamp will be copied over
         /// </summary>
         /// <typeparam name="K">The type of the new data</typeparam>
         /// <param name="data">The new data</param>

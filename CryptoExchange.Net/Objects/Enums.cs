@@ -16,7 +16,7 @@
     }
 
     /// <summary>
-    /// Where the post parameters should be added
+    /// Where the parameters for a post request should be added
     /// </summary>
     public enum PostParameters
     {

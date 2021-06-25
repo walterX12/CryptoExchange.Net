@@ -55,7 +55,7 @@
     }
 
     /// <summary>
-    /// No api credentials provided while trying to access private endpoint
+    /// No api credentials provided while trying to access a private endpoint
     /// </summary>
     public class NoApiCredentialsError : Error
     {

@@ -383,9 +383,9 @@ namespace CryptoExchange.Net
         /// Needs to unsubscribe a subscription, typically by sending an unsubscribe request. If multiple subscriptions per socket is not allowed this can just return since the socket will be closed anyway
         /// </summary>
         /// <param name="connection">The connection on which to unsubscribe</param>
-        /// <param name="s">The subscription to unsubscribe</param>
+        /// <param name="subscriptionToUnsub">The subscription to unsubscribe</param>
         /// <returns></returns>
-        protected internal abstract Task<bool> Unsubscribe(SocketConnection connection, SocketSubscription s);
+        protected internal abstract Task<bool> Unsubscribe(SocketConnection connection, SocketSubscription subscriptionToUnsub);
 
         /// <summary>
         /// Optional handler to interpolate data before sending it to the handlers
@@ -530,7 +530,7 @@ namespace CryptoExchange.Net
         }
 
         /// <summary>
-        /// Periodically sends an object to a socket
+        /// Periodically sends data over a socket connection
         /// </summary>
         /// <param name="interval">How often</param>
         /// <param name="objGetter">Method returning the object to send</param>
@@ -575,7 +575,7 @@ namespace CryptoExchange.Net
         
 
         /// <summary>
-        /// Unsubscribe from a stream
+        /// Unsubscribe an update subscription
         /// </summary>
         /// <param name="subscription">The subscription to unsubscribe</param>
         /// <returns></returns>

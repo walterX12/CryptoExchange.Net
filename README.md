@@ -309,6 +309,12 @@ private void SomeMethod()
 ````
 
 ## Release notes
+* Version 4.0.0-beta10 - 07 Jul 2021
+    * Updated BaseConverter to be case sensitive
+    * Added ExchangeHelpers class containing some helper methods
+    * Fixed responses not being logged on Trace log level
+    * Added some code docs
+
 * Version 4.0.0-beta9 - 17 Jun 2021
     * Small fixes
 

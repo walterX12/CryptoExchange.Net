@@ -213,7 +213,7 @@ The library implementations provide a `SymbolOrderBook` implementation. This imp
 ````C#
 var orderBook = new BinanceSymbolOrderBook("BTCUSDT", new BinanceOrderBookOptions(20));
 orderBook.OnStatusChange += (oldStatus, newStatus) => Console.WriteLine($"Book state changed from {oldStatus} to {newStatus}");
-orderBook.OnOrderBookUpdate += (changedBids, changedAsks) => Console.WriteLine("Book updated");
+orderBook.OnOrderBookUpdate += ((changedBids, changedAsks)) => Console.WriteLine("Book updated");
 var startResult = await orderBook.StartAsync();
 if(!startResult.Success)
 {
@@ -232,6 +232,9 @@ var bestAsk = orderBook.BestAsk; // The best ask available in the book
 The order book will automatically reconnect when the connection is lost and resync if it detects that it is out of sync. Make sure to check the Status property to see it the book is currently in sync.
 
 To stop synchronizing an order book use the `Stop` method.
+
+## Helper methods
+The static `ExchangeHelpers` class offers some helper methods for adjusting value like rounding and adjusting values to fit a certain step size or precision. 
 
 ## Creating an implementation
 Implementations should implement at least the following:  
@@ -306,6 +309,12 @@ private void SomeMethod()
 ````
 
 ## Release notes
+* Version 4.0.0-beta10 - 07 Jul 2021
+    * Updated BaseConverter to be case sensitive
+    * Added ExchangeHelpers class containing some helper methods
+    * Fixed responses not being logged on Trace log level
+    * Added some code docs
+
 * Version 4.0.0-beta9 - 17 Jun 2021
     * Small fixes
 

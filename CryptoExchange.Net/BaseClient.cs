@@ -177,7 +177,7 @@ namespace CryptoExchange.Net
 
             try
             {
-                if ((checkObject ?? ShouldCheckObjects)&& log.Level == LogLevel.Debug)
+                if ((checkObject ?? ShouldCheckObjects)&& log.Level <= LogLevel.Debug)
                 {
                     // This checks the input JToken object against the class it is being serialized into and outputs any missing fields
                     // in either the input or the class
@@ -243,7 +243,7 @@ namespace CryptoExchange.Net
 
                 // If we have to output the original json data or output the data into the logging we'll have to read to full response
                 // in order to log/return the json data
-                if (OutputOriginalData || log.Level == LogLevel.Debug)
+                if (OutputOriginalData || log.Level <= LogLevel.Debug)
                 {
                     var data = await reader.ReadToEndAsync().ConfigureAwait(false);
                     log.Write(LogLevel.Debug, $"{(requestId != null ? $"[{requestId}] ": "")}Response received{(elapsedMilliseconds != null ? $" in {elapsedMilliseconds}" : " ")}ms: {data}");

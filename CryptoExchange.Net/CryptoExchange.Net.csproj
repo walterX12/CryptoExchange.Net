@@ -6,16 +6,16 @@
     <PackageId>CryptoExchange.Net</PackageId>
     <Authors>JKorf</Authors>
     <Description>A base package for implementing cryptocurrency exchange API's</Description>
-    <PackageVersion>4.0.0-beta9</PackageVersion>
+    <PackageVersion>4.0.0-beta10</PackageVersion>
     <AssemblyVersion>4.0.0.10</AssemblyVersion>
-    <FileVersion>4.0.0-beta9</FileVersion>
+    <FileVersion>4.0.0-beta10</FileVersion>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/JKorf/CryptoExchange.Net.git</RepositoryUrl>
     <PackageProjectUrl>https://github.com/JKorf/CryptoExchange.Net</PackageProjectUrl>
     <NeutralLanguage>en</NeutralLanguage>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageReleaseNotes>4.0.0-beta9 - Small fixes</PackageReleaseNotes>
+    <PackageReleaseNotes>4.0.0-beta10 - Updated BaseConverter to be case sensitive, Added ExchangeHelpers class containing some helper methods, Fixed responses not being logged on Trace log level, Added some code docs</PackageReleaseNotes>
     <Nullable>enable</Nullable>
     <LangVersion>8.0</LangVersion>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

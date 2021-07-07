@@ -167,8 +167,8 @@ namespace CryptoExchange.Net
         /// <param name="parameters">The parameters of the request</param>
         /// <param name="signed">Whether or not the request should be authenticated</param>
         /// <param name="checkResult">Whether or not the resulting object should be checked for missing properties in the mapping (only outputs if log verbosity is Debug)</param> 
-        /// <param name="postPosition">Where the post parameters should be placed</param>
-        /// <param name="arraySerialization">How array parameters should be serialized</param>
+        /// <param name="postPosition">Where the post parameters should be placed, overwrites the value set in the client</param>
+        /// <param name="arraySerialization">How array parameters should be serialized, overwrites the value set in the client</param>
         /// <param name="credits">Credits used for the request</param>
         /// <param name="deserializer">The JsonSerializer to use for deserialization</param>
         /// <returns></returns>

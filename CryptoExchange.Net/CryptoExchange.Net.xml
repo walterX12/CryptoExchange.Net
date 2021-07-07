@@ -99,27 +99,27 @@
         </member>
         <member name="M:CryptoExchange.Net.Authentication.AuthenticationProvider.AddAuthenticationToParameters(System.String,System.Net.Http.HttpMethod,System.Collections.Generic.Dictionary{System.String,System.Object},System.Boolean,CryptoExchange.Net.Objects.PostParameters,CryptoExchange.Net.Objects.ArrayParametersSerialization)">
             <summary>
-            Add authentication to the parameter list
+            Add authentication to the parameter list based on the provided credentials
             </summary>
-            <param name="uri"></param>
-            <param name="method"></param>
-            <param name="parameters"></param>
-            <param name="signed"></param>
-            <param name="postParameterPosition"></param>
-            <param name="arraySerialization"></param>
-            <returns></returns>
+            <param name="uri">The uri the request is for</param>
+            <param name="method">The HTTP method of the request</param>
+            <param name="parameters">The provided parameters for the request</param>
+            <param name="signed">Wether or not the request needs to be signed. If not typically the parameters list can just be returned</param>
+            <param name="postParameterPosition">Where post parameters are placed, in the URI or in the request body</param>
+            <param name="arraySerialization">How array parameters are serialized</param>
+            <returns>Should return the original parameter list including any authentication parameters needed</returns>
         </member>
         <member name="M:CryptoExchange.Net.Authentication.AuthenticationProvider.AddAuthenticationToHeaders(System.String,System.Net.Http.HttpMethod,System.Collections.Generic.Dictionary{System.String,System.Object},System.Boolean,CryptoExchange.Net.Objects.PostParameters,CryptoExchange.Net.Objects.ArrayParametersSerialization)">
             <summary>
-            Add authentication to the header dictionary
+            Add authentication to the header dictionary based on the provided credentials
             </summary>
-            <param name="uri"></param>
-            <param name="method"></param>
-            <param name="parameters"></param>
-            <param name="signed"></param>
-            <param name="postParameterPosition"></param>
-            <param name="arraySerialization"></param>
-            <returns></returns>
+            <param name="uri">The uri the request is for</param>
+            <param name="method">The HTTP method of the request</param>
+            <param name="parameters">The provided parameters for the request</param>
+            <param name="signed">Wether or not the request needs to be signed. If not typically the parameters list can just be returned</param>
+            <param name="postParameterPosition">Where post parameters are placed, in the URI or in the request body</param>
+            <param name="arraySerialization">How array parameters are serialized</param>
+            <returns>Should return a dictionary containing any header key/value pairs needed for authenticating the request</returns>
         </member>
         <member name="M:CryptoExchange.Net.Authentication.AuthenticationProvider.Sign(System.String)">
             <summary>
@@ -465,6 +465,66 @@
         </member>
         <member name="M:CryptoExchange.Net.Converters.UTCDateTimeConverter.CanConvert(System.Type)">
             <inheritdoc />
+        </member>
+        <member name="T:CryptoExchange.Net.ExchangeHelpers">
+            <summary>
+            General helpers functions
+            </summary>
+        </member>
+        <member name="M:CryptoExchange.Net.ExchangeHelpers.ClampValue(System.Decimal,System.Decimal,System.Decimal)">
+            <summary>
+            Clamp a value between a min and max
+            </summary>
+            <param name="min"></param>
+            <param name="max"></param>
+            <param name="value"></param>
+            <returns></returns>
+        </member>
+        <member name="M:CryptoExchange.Net.ExchangeHelpers.AdjustValueStep(System.Decimal,System.Decimal,System.Nullable{System.Decimal},CryptoExchange.Net.Objects.RoundingType,System.Decimal)">
+            <summary>
+            Adjust a value to be between the min and max parameters and rounded to the closest step.
+            </summary>
+            <param name="min">The min value</param>
+            <param name="max">The max value</param>
+            <param name="step">The step size the value should be floored to. For example, value 2.548 with a step size of 0.01 will output 2.54</param>
+            <param name="roundingType">How to round</param>
+            <param name="value">The input value</param>
+            <returns></returns>
+        </member>
+        <member name="M:CryptoExchange.Net.ExchangeHelpers.AdjustValuePrecision(System.Decimal,System.Decimal,System.Nullable{System.Int32},CryptoExchange.Net.Objects.RoundingType,System.Decimal)">
+            <summary>
+            Adjust a value to be between the min and max parameters and rounded to the closest precision.
+            </summary>
+            <param name="min">The min value</param>
+            <param name="max">The max value</param>
+            <param name="precision">The precision the value should be rounded to. For example, value 2.554215 with a precision of 5 will output 2.5542</param>
+            <param name="roundingType">How to round</param>
+            <param name="value">The input value</param>
+            <returns></returns>
+        </member>
+        <member name="M:CryptoExchange.Net.ExchangeHelpers.RoundToSignificantDigits(System.Decimal,System.Int32,CryptoExchange.Net.Objects.RoundingType)">
+            <summary>
+            Round a value to have the provided total number of digits. For example, value 253.12332 with 5 digits would be 253.12 
+            </summary>
+            <param name="value">The value to round</param>
+            <param name="digits">The total amount of digits (NOT decimal places) to round to</param>
+            <param name="roundingType">How to round</param>
+            <returns></returns>
+        </member>
+        <member name="M:CryptoExchange.Net.ExchangeHelpers.RoundDown(System.Decimal,System.Double)">
+            <summary>
+            Rounds a value down to 
+            </summary>
+            <param name="i"></param>
+            <param name="decimalPlaces"></param>
+            <returns></returns>
+        </member>
+        <member name="M:CryptoExchange.Net.ExchangeHelpers.Normalize(System.Decimal)">
+            <summary>
+            Strips any trailing zero's of a decimal value, useful when converting the value to string.
+            </summary>
+            <param name="value"></param>
+            <returns></returns>
         </member>
         <member name="T:CryptoExchange.Net.ExchangeInterfaces.ICommonBalance">
             <summary>
@@ -1582,29 +1642,6 @@
             <param name="logLevel">The verbosity of the message</param>
             <param name="message">The message to log</param>
         </member>
-        <member name="T:CryptoExchange.Net.Logging.ThreadSafeFileWriter">
-            <summary>
-            File writer
-            </summary>
-        </member>
-        <member name="P:CryptoExchange.Net.Logging.ThreadSafeFileWriter.Encoding">
-            <inheritdoc />
-        </member>
-        <member name="M:CryptoExchange.Net.Logging.ThreadSafeFileWriter.#ctor(System.String)">
-            <summary>
-            ctor
-            </summary>
-            <param name="path"></param>
-        </member>
-        <member name="M:CryptoExchange.Net.Logging.ThreadSafeFileWriter.WriteLine(System.String)">
-            <inheritdoc />
-        </member>
-        <member name="M:CryptoExchange.Net.Logging.ThreadSafeFileWriter.Dispose(System.Boolean)">
-            <summary>
-            Dispose
-            </summary>
-            <param name="disposing"></param>
-        </member>
         <member name="T:CryptoExchange.Net.Objects.ApiProxy">
             <summary>
             Proxy info
@@ -1955,6 +1992,21 @@
         <member name="F:CryptoExchange.Net.Objects.ArrayParametersSerialization.Array">
             <summary>
             Create an []=value array
+            </summary>
+        </member>
+        <member name="T:CryptoExchange.Net.Objects.RoundingType">
+            <summary>
+            How to round
+            </summary>
+        </member>
+        <member name="F:CryptoExchange.Net.Objects.RoundingType.Down">
+            <summary>
+            Round down (flooring)
+            </summary>
+        </member>
+        <member name="F:CryptoExchange.Net.Objects.RoundingType.Closest">
+            <summary>
+            Round to closest value
             </summary>
         </member>
         <member name="T:CryptoExchange.Net.Objects.Error">
@@ -2847,8 +2899,8 @@
             <param name="parameters">The parameters of the request</param>
             <param name="signed">Whether or not the request should be authenticated</param>
             <param name="checkResult">Whether or not the resulting object should be checked for missing properties in the mapping (only outputs if log verbosity is Debug)</param> 
-            <param name="postPosition">Where the post parameters should be placed</param>
-            <param name="arraySerialization">How array parameters should be serialized</param>
+            <param name="postPosition">Where the post parameters should be placed, overwrites the value set in the client</param>
+            <param name="arraySerialization">How array parameters should be serialized, overwrites the value set in the client</param>
             <param name="credits">Credits used for the request</param>
             <param name="deserializer">The JsonSerializer to use for deserialization</param>
             <returns></returns>

@@ -98,5 +98,14 @@ namespace CryptoExchange.Net.Interfaces
         /// </summary>
         /// <returns></returns>
         Task StopAsync();
+
+        /// <summary>
+        /// Get the average price that a market order would fill at at the current order book state. This is no guarentee that an order of that quantity would actually be filled
+        /// at that price since between this calculation and the order placement the book can have changed.
+        /// </summary>
+        /// <param name="quantity">The quantity in base asset to fill</param>
+        /// <param name="type">The type</param>
+        /// <returns>Average fill price</returns>
+        CallResult<decimal> CalculateAverageFillPrice(decimal quantity, OrderBookEntryType type);
     }
 }

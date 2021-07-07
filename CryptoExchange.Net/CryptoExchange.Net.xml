@@ -1372,6 +1372,15 @@
             </summary>
             <returns></returns>
         </member>
+        <member name="M:CryptoExchange.Net.Interfaces.ISymbolOrderBook.CalculateAverageFillPrice(System.Decimal,CryptoExchange.Net.Objects.OrderBookEntryType)">
+            <summary>
+            Get the average price that a market order would fill at at the current order book state. This is no guarentee that an order of that quantity would actually be filled
+            at that price since between this calculation and the order placement the book can have changed.
+            </summary>
+            <param name="quantity">The quantity in base asset to fill</param>
+            <param name="type">The type</param>
+            <returns>Average fill price</returns>
+        </member>
         <member name="T:CryptoExchange.Net.Interfaces.ISymbolOrderBookEntry">
             <summary>
             Interface for order book entries
@@ -2098,6 +2107,17 @@
             ctor
             </summary>
         </member>
+        <member name="T:CryptoExchange.Net.Objects.InvalidOperationError">
+            <summary>
+            Invalid operation requested
+            </summary>
+        </member>
+        <member name="M:CryptoExchange.Net.Objects.InvalidOperationError.#ctor(System.String)">
+            <summary>
+            ctor
+            </summary>
+            <param name="message"></param>
+        </member>
         <member name="T:CryptoExchange.Net.Objects.BaseOptions">
             <summary>
             Base options
@@ -2437,6 +2457,15 @@
             Start connecting and synchronizing the order book
             </summary>
             <returns></returns>
+        </member>
+        <member name="M:CryptoExchange.Net.OrderBook.SymbolOrderBook.CalculateAverageFillPrice(System.Decimal,CryptoExchange.Net.Objects.OrderBookEntryType)">
+            <summary>
+            Get the average price that a market order would fill at at the current order book state. This is no guarentee that an order of that quantity would actually be filled
+            at that price since between this calculation and the order placement the book can have changed.
+            </summary>
+            <param name="quantity">The quantity in base asset to fill</param>
+            <param name="type">The type</param>
+            <returns>Average fill price</returns>
         </member>
         <member name="M:CryptoExchange.Net.OrderBook.SymbolOrderBook.Stop">
             <summary>

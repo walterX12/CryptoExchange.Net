@@ -241,6 +241,43 @@ namespace CryptoExchange.Net.OrderBook
             return new CallResult<bool>(true, null);
         }
 
+        /// <summary>
+        /// Get the average price that a market order would fill at at the current order book state. This is no guarentee that an order of that quantity would actually be filled
+        /// at that price since between this calculation and the order placement the book can have changed.
+        /// </summary>
+        /// <param name="quantity">The quantity in base asset to fill</param>
+        /// <param name="type">The type</param>
+        /// <returns>Average fill price</returns>
+        public CallResult<decimal> CalculateAverageFillPrice(decimal quantity, OrderBookEntryType type)
+        {
+            if (Status != OrderBookStatus.Synced)
+                return new CallResult<decimal>(0, new InvalidOperationError($"{nameof(CalculateAverageFillPrice)} is not available when book is not in Synced state"));
+
+            var totalCost = 0m;
+            var totalAmount = 0m;
+            var amountLeft = quantity;
+            lock (bookLock)
+            {
+                var list = type == OrderBookEntryType.Ask ? asks : bids;
+                
+                var step = 0;
+                while (amountLeft > 0)
+                {
+                    if (step == list.Count)
+                        return new CallResult<decimal>(0, new InvalidOperationError($"Quantity is larger than order in the order book"));
+
+                    var element = list.ElementAt(step);
+                    var stepAmount = Math.Min(element.Value.Quantity, amountLeft);
+                    totalCost += stepAmount * element.Value.Price;
+                    totalAmount += stepAmount;
+                    amountLeft -= stepAmount;
+                    step++;
+                }
+            }
+
+            return new CallResult<decimal>(Math.Round(totalCost / totalAmount, 8), null);
+        }
+
         private void Reset()
         {
             log.Write(LogLevel.Warning, $"{Id} order book {Symbol} connection lost");

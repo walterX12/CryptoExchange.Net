@@ -141,6 +141,18 @@ namespace CryptoExchange.Net.OrderBook
             }
         }
 
+        /// <summary>
+        /// Get a snapshot of the book at this moment
+        /// </summary>
+        public (IEnumerable<ISymbolOrderBookEntry> bids, IEnumerable<ISymbolOrderBookEntry> asks) Book
+        {
+            get
+            {
+                lock (bookLock)
+                    return (Bids, Asks);
+            }
+        }
+
         private class EmptySymbolOrderBookEntry : ISymbolOrderBookEntry
         {
             public decimal Quantity { get { return 0m; } set {; } }

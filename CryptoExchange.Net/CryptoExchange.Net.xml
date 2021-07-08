@@ -1383,6 +1383,11 @@
             The number of bids in the book
             </summary>
         </member>
+        <member name="P:CryptoExchange.Net.Interfaces.ISymbolOrderBook.Book">
+            <summary>
+            Get a snapshot of the book at this moment
+            </summary>
+        </member>
         <member name="P:CryptoExchange.Net.Interfaces.ISymbolOrderBook.Asks">
             <summary>
             The list of asks
@@ -2474,6 +2479,11 @@
         <member name="P:CryptoExchange.Net.OrderBook.SymbolOrderBook.Bids">
             <summary>
             The list of bids
+            </summary>
+        </member>
+        <member name="P:CryptoExchange.Net.OrderBook.SymbolOrderBook.Book">
+            <summary>
+            Get a snapshot of the book at this moment
             </summary>
         </member>
         <member name="P:CryptoExchange.Net.OrderBook.SymbolOrderBook.BestBid">

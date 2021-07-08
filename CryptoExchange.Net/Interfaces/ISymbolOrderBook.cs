@@ -51,6 +51,11 @@ namespace CryptoExchange.Net.Interfaces
         int BidCount { get; }
 
         /// <summary>
+        /// Get a snapshot of the book at this moment
+        /// </summary>
+        (IEnumerable<ISymbolOrderBookEntry> bids, IEnumerable<ISymbolOrderBookEntry> asks) Book { get; }
+
+        /// <summary>
         /// The list of asks
         /// </summary>
         IEnumerable<ISymbolOrderBookEntry> Asks { get; }

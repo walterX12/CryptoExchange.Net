@@ -26,12 +26,12 @@ namespace CryptoExchange.Net.UnitTests
 
             public override void Dispose() {}
 
-            protected override Task<CallResult<bool>> DoResync()
+            protected override Task<CallResult<bool>> DoResyncAsync()
             {
                 throw new NotImplementedException();
             }
 
-            protected override Task<CallResult<UpdateSubscription>> DoStart()
+            protected override Task<CallResult<UpdateSubscription>> DoStartAsync()
             {
                 throw new NotImplementedException();
             }

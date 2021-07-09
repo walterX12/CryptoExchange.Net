@@ -236,7 +236,7 @@ namespace CryptoExchange.Net.OrderBook
             Status = OrderBookStatus.Connecting;
             _processTask = Task.Run(ProcessQueue);
 
-            var startResult = await DoStart().ConfigureAwait(false);
+            var startResult = await DoStartAsync().ConfigureAwait(false);
             if (!startResult)
                 return new CallResult<bool>(false, startResult.Error);
 
@@ -305,7 +305,7 @@ namespace CryptoExchange.Net.OrderBook
                 if (Status != OrderBookStatus.Syncing)
                     return;
 
-                var resyncResult = await DoResync().ConfigureAwait(false);
+                var resyncResult = await DoResyncAsync().ConfigureAwait(false);
                 success = resyncResult;
             }
 
@@ -333,7 +333,7 @@ namespace CryptoExchange.Net.OrderBook
         /// Start the order book
         /// </summary>
         /// <returns></returns>
-        protected abstract Task<CallResult<UpdateSubscription>> DoStart();
+        protected abstract Task<CallResult<UpdateSubscription>> DoStartAsync();
 
         /// <summary>
         /// Reset the order book
@@ -344,7 +344,7 @@ namespace CryptoExchange.Net.OrderBook
         /// Resync the order book
         /// </summary>
         /// <returns></returns>
-        protected abstract Task<CallResult<bool>> DoResync();
+        protected abstract Task<CallResult<bool>> DoResyncAsync();
 
         /// <summary>
         /// Validate a checksum with the current order book

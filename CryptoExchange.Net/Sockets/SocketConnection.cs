@@ -261,7 +261,7 @@ namespace CryptoExchange.Net.Sockets
         /// <param name="timeout">The timeout for response</param>
         /// <param name="handler">The response handler</param>
         /// <returns></returns>
-        public virtual Task SendAndWait<T>(T obj, TimeSpan timeout, Func<JToken, bool> handler)
+        public virtual Task SendAndWaitAsync<T>(T obj, TimeSpan timeout, Func<JToken, bool> handler)
         {
             var pending = new PendingRequest(handler, timeout);
             lock (pendingRequests)
@@ -323,7 +323,7 @@ namespace CryptoExchange.Net.Sockets
                         }
 
                         Socket.Reset();
-                        if (!await Socket.Connect().ConfigureAwait(false))
+                        if (!await Socket.ConnectAsync().ConfigureAwait(false))
                         {
                             log.Write(LogLevel.Debug, $"Socket {Socket.Id} failed to reconnect");
                             continue;
@@ -335,9 +335,9 @@ namespace CryptoExchange.Net.Sockets
 
                         log.Write(LogLevel.Information, $"Socket {Socket.Id} reconnected after {DateTime.UtcNow - time}");
 
-                        var reconnectResult = await ProcessReconnect().ConfigureAwait(false);
+                        var reconnectResult = await ProcessReconnectAsync().ConfigureAwait(false);
                         if (!reconnectResult)
-                            await Socket.Close().ConfigureAwait(false);
+                            await Socket.CloseAsync().ConfigureAwait(false);
                         else
                         {
                             if (lostTriggered)
@@ -369,12 +369,12 @@ namespace CryptoExchange.Net.Sockets
             await Task.Run(() => ConnectionRestored?.Invoke(disconnectTime.HasValue ? DateTime.UtcNow - disconnectTime.Value : TimeSpan.FromSeconds(0))).ConfigureAwait(false);
         }
 
-        private async Task<bool> ProcessReconnect()
+        private async Task<bool> ProcessReconnectAsync()
         {
             if (Authenticated)
             {
                 // If we reconnected a authenticated connection we need to re-authenticate
-                var authResult = await socketClient.AuthenticateSocket(this).ConfigureAwait(false);
+                var authResult = await socketClient.AuthenticateSocketAsync(this).ConfigureAwait(false);
                 if (!authResult)
                 {
                     log.Write(LogLevel.Information, $"Socket {Socket.Id} authentication failed on reconnected socket. Disconnecting and reconnecting.");
@@ -394,7 +394,7 @@ namespace CryptoExchange.Net.Sockets
             // Foreach subscription which is subscribed by a subscription request we will need to resend that request to resubscribe
             foreach (var subscription in subscriptionList)
             {
-                var task = socketClient.SubscribeAndWait(this, subscription.Request!, subscription).ContinueWith(t =>
+                var task = socketClient.SubscribeAndWaitAsync(this, subscription.Request!, subscription).ContinueWith(t =>
                 {
                     if (!t.Result)
                         success = false;
@@ -417,14 +417,14 @@ namespace CryptoExchange.Net.Sockets
         /// Close the connection
         /// </summary>
         /// <returns></returns>
-        public async Task Close()
+        public async Task CloseAsync()
         {
             Connected = false;
             ShouldReconnect = false;
             if (socketClient.sockets.ContainsKey(Socket.Id))
                 socketClient.sockets.TryRemove(Socket.Id, out _);
             
-            await Socket.Close().ConfigureAwait(false);
+            await Socket.CloseAsync().ConfigureAwait(false);
             Socket.Dispose();
         }
 
@@ -433,17 +433,17 @@ namespace CryptoExchange.Net.Sockets
         /// </summary>
         /// <param name="subscription">Subscription to close</param>
         /// <returns></returns>
-        public async Task Close(SocketSubscription subscription)
+        public async Task CloseAsync(SocketSubscription subscription)
         {
             if (subscription.Confirmed)
-                await socketClient.Unsubscribe(this, subscription).ConfigureAwait(false);
+                await socketClient.UnsubscribeAsync(this, subscription).ConfigureAwait(false);
 
             var shouldCloseConnection = false;
             lock (subscriptionLock)
                 shouldCloseConnection = subscriptions.Count(r => r.UserSubscription && subscription != r) == 0;
 
             if (shouldCloseConnection)
-                await Close().ConfigureAwait(false);
+                await CloseAsync().ConfigureAwait(false);
 
             lock (subscriptionLock)
                 subscriptions.Remove(subscription);            

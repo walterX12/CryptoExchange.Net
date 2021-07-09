@@ -76,7 +76,7 @@ namespace CryptoExchange.Net.Interfaces
         /// Connect the socket
         /// </summary>
         /// <returns></returns>
-        Task<bool> Connect();
+        Task<bool> ConnectAsync();
         /// <summary>
         /// Send data
         /// </summary>
@@ -90,7 +90,7 @@ namespace CryptoExchange.Net.Interfaces
         /// Close the connecting
         /// </summary>
         /// <returns></returns>
-        Task Close();
+        Task CloseAsync();
         /// <summary>
         /// Set proxy
         /// </summary>

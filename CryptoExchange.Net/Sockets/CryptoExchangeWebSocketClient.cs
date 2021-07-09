@@ -199,7 +199,7 @@ namespace CryptoExchange.Net.Sockets
         /// Connect the websocket
         /// </summary>
         /// <returns>True if successfull</returns>
-        public virtual async Task<bool> Connect()
+        public virtual async Task<bool> ConnectAsync()
         {
             log.Write(LogLevel.Debug, $"Socket {Id} connecting");
             try
@@ -216,10 +216,10 @@ namespace CryptoExchange.Net.Sockets
             }
 
             log.Write(LogLevel.Debug, $"Socket {Id} connected");
-            _sendTask = Task.Run(async () => await SendLoop().ConfigureAwait(false));
-            _receiveTask = Task.Run(ReceiveLoop);
+            _sendTask = Task.Run(async () => await SendLoopAsync().ConfigureAwait(false));
+            _receiveTask = Task.Run(ReceiveLoopAsync);
             if (Timeout != default)
-                _timeoutTask = Task.Run(CheckTimeout);
+                _timeoutTask = Task.Run(CheckTimeoutAsync);
             return true;
         }
 
@@ -241,10 +241,10 @@ namespace CryptoExchange.Net.Sockets
         /// Close the websocket
         /// </summary>
         /// <returns></returns>
-        public virtual async Task Close()
+        public virtual async Task CloseAsync()
         {
             log.Write(LogLevel.Debug, $"Socket {Id} closing");
-            await CloseInternal(true, true, true).ConfigureAwait(false);
+            await CloseInternalAsync(true, true, true).ConfigureAwait(false);
         }
         
         /// <summary>
@@ -254,7 +254,7 @@ namespace CryptoExchange.Net.Sockets
         /// <param name="waitSend"></param>
         /// <param name="waitReceive"></param>
         /// <returns></returns>
-        private async Task CloseInternal(bool closeSocket, bool waitSend, bool waitReceive)
+        private async Task CloseInternalAsync(bool closeSocket, bool waitSend, bool waitReceive)
         {
             if (_closing)
                 return;
@@ -327,7 +327,7 @@ namespace CryptoExchange.Net.Sockets
         /// Loop for sending data
         /// </summary>
         /// <returns></returns>
-        private async Task SendLoop()
+        private async Task SendLoopAsync()
         {
             while (true)
             {
@@ -352,7 +352,7 @@ namespace CryptoExchange.Net.Sockets
                 {
                     // Connection closed unexpectedly                        
                     Handle(errorHandlers, wse);
-                    await CloseInternal(false, false, true).ConfigureAwait(false);
+                    await CloseInternalAsync(false, false, true).ConfigureAwait(false);
                     break;
                 }
             }
@@ -362,7 +362,7 @@ namespace CryptoExchange.Net.Sockets
         /// Loop for receiving and reassembling data
         /// </summary>
         /// <returns></returns>
-        private async Task ReceiveLoop()
+        private async Task ReceiveLoopAsync()
         {
             var buffer = new ArraySegment<byte>(new byte[4096]);
             var received = 0;
@@ -390,14 +390,14 @@ namespace CryptoExchange.Net.Sockets
                     {
                         // Connection closed unexpectedly        
                         Handle(errorHandlers, wse);
-                        await CloseInternal(false, true, false).ConfigureAwait(false);
+                        await CloseInternalAsync(false, true, false).ConfigureAwait(false);
                         break;
                     }
 
                     if (receiveResult.MessageType == WebSocketMessageType.Close)
                     {
                         // Connection closed unexpectedly        
-                        await CloseInternal(true, true, true).ConfigureAwait(false);
+                        await CloseInternalAsync(true, true, true).ConfigureAwait(false);
                         break;
                     }
 
@@ -498,7 +498,7 @@ namespace CryptoExchange.Net.Sockets
         /// Checks if there is no data received for a period longer than the specified timeout
         /// </summary>
         /// <returns></returns>
-        protected async Task CheckTimeout()
+        protected async Task CheckTimeoutAsync()
         {
             log.Write(LogLevel.Debug, $"Socket {Id} Starting task checking for no data received for {Timeout}");
             while (true)
@@ -509,7 +509,7 @@ namespace CryptoExchange.Net.Sockets
                 if (DateTime.UtcNow - LastActionTime > Timeout)
                 {
                     log.Write(LogLevel.Warning, $"Socket {Id} No data received for {Timeout}, reconnecting socket");
-                    _ = Close().ConfigureAwait(false);
+                    _ = CloseAsync().ConfigureAwait(false);
                     return;
                 }
                 try

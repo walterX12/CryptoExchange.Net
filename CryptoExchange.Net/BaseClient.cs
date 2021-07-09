@@ -231,7 +231,7 @@ namespace CryptoExchange.Net
         /// <param name="requestId">Id of the request the data is returned from (used for grouping logging by request)</param>
         /// <param name="elapsedMilliseconds">Milliseconds response time for the request this stream is a response for</param>
         /// <returns></returns>
-        protected async Task<CallResult<T>> Deserialize<T>(Stream stream, JsonSerializer? serializer = null, int? requestId = null, long? elapsedMilliseconds = null)
+        protected async Task<CallResult<T>> DeserializeAsync<T>(Stream stream, JsonSerializer? serializer = null, int? requestId = null, long? elapsedMilliseconds = null)
         {
             if (serializer == null)
                 serializer = defaultSerializer;
@@ -265,7 +265,7 @@ namespace CryptoExchange.Net
                 {
                     // If we can seek the stream rewind it so we can retrieve the original data that was sent
                     stream.Seek(0, SeekOrigin.Begin);
-                    data = await ReadStream(stream).ConfigureAwait(false);
+                    data = await ReadStreamAsync(stream).ConfigureAwait(false);
                 }
                 else
                     data = "[Data only available in Debug LogLevel]";
@@ -278,7 +278,7 @@ namespace CryptoExchange.Net
                 if (stream.CanSeek)
                 {
                     stream.Seek(0, SeekOrigin.Begin);
-                    data = await ReadStream(stream).ConfigureAwait(false);
+                    data = await ReadStreamAsync(stream).ConfigureAwait(false);
                 }
                 else
                     data = "[Data only available in Debug LogLevel]";
@@ -291,7 +291,7 @@ namespace CryptoExchange.Net
                 string data;
                 if (stream.CanSeek) { 
                     stream.Seek(0, SeekOrigin.Begin);
-                    data = await ReadStream(stream).ConfigureAwait(false);
+                    data = await ReadStreamAsync(stream).ConfigureAwait(false);
                 }
                 else
                     data = "[Data only available in Debug LogLevel]";
@@ -302,7 +302,7 @@ namespace CryptoExchange.Net
             }
         }
 
-        private async Task<string> ReadStream(Stream stream)
+        private async Task<string> ReadStreamAsync(Stream stream)
         { 
             using var reader = new StreamReader(stream, Encoding.UTF8, false, 512, true);
             return await reader.ReadToEndAsync().ConfigureAwait(false);

@@ -84,19 +84,7 @@ namespace CryptoExchange.Net.Interfaces
         /// Start connecting and synchronizing the order book
         /// </summary>
         /// <returns></returns>
-        CallResult<bool> Start();
-
-        /// <summary>
-        /// Start connecting and synchronizing the order book
-        /// </summary>
-        /// <returns></returns>
         Task<CallResult<bool>> StartAsync();
-
-        /// <summary>
-        /// Stop syncing the order book
-        /// </summary>
-        /// <returns></returns>
-        void Stop();
 
         /// <summary>
         /// Stop syncing the order book

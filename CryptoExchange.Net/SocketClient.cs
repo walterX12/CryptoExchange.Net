@@ -125,9 +125,9 @@ namespace CryptoExchange.Net
         /// <param name="authenticated">If the subscription is to an authenticated endpoint</param>
         /// <param name="dataHandler">The handler of update data</param>
         /// <returns></returns>
-        protected virtual Task<CallResult<UpdateSubscription>> Subscribe<T>(object? request, string? identifier, bool authenticated, Action<DataEvent<T>> dataHandler)
+        protected virtual Task<CallResult<UpdateSubscription>> SubscribeAsync<T>(object? request, string? identifier, bool authenticated, Action<DataEvent<T>> dataHandler)
         {
-            return Subscribe(BaseAddress, request, identifier, authenticated, dataHandler);
+            return SubscribeAsync(BaseAddress, request, identifier, authenticated, dataHandler);
         }
 
         /// <summary>
@@ -140,7 +140,7 @@ namespace CryptoExchange.Net
         /// <param name="authenticated">If the subscription is to an authenticated endpoint</param>
         /// <param name="dataHandler">The handler of update data</param>
         /// <returns></returns>
-        protected virtual async Task<CallResult<UpdateSubscription>> Subscribe<T>(string url, object? request, string? identifier, bool authenticated, Action<DataEvent<T>> dataHandler)
+        protected virtual async Task<CallResult<UpdateSubscription>> SubscribeAsync<T>(string url, object? request, string? identifier, bool authenticated, Action<DataEvent<T>> dataHandler)
         {
             SocketConnection socketConnection;
             SocketSubscription subscription;
@@ -164,7 +164,7 @@ namespace CryptoExchange.Net
 
                 var needsConnecting = !socketConnection.Connected;
 
-                var connectResult = await ConnectIfNeeded(socketConnection, authenticated).ConfigureAwait(false);
+                var connectResult = await ConnectIfNeededAsync(socketConnection, authenticated).ConfigureAwait(false);
                 if (!connectResult)
                     return new CallResult<UpdateSubscription>(null, connectResult.Error);
 
@@ -186,10 +186,10 @@ namespace CryptoExchange.Net
             if (request != null)
             {
                 // Send the request and wait for answer
-                var subResult = await SubscribeAndWait(socketConnection, request, subscription).ConfigureAwait(false);
+                var subResult = await SubscribeAndWaitAsync(socketConnection, request, subscription).ConfigureAwait(false);
                 if (!subResult)
                 {
-                    await socketConnection.Close(subscription).ConfigureAwait(false);
+                    await socketConnection.CloseAsync(subscription).ConfigureAwait(false);
                     return new CallResult<UpdateSubscription>(null, subResult.Error);
                 }
             }
@@ -210,10 +210,10 @@ namespace CryptoExchange.Net
         /// <param name="request">The request to send, will be serialized to json</param>
         /// <param name="subscription">The subscription the request is for</param>
         /// <returns></returns>
-        protected internal virtual async Task<CallResult<bool>> SubscribeAndWait(SocketConnection socketConnection, object request, SocketSubscription subscription)
+        protected internal virtual async Task<CallResult<bool>> SubscribeAndWaitAsync(SocketConnection socketConnection, object request, SocketSubscription subscription)
         {
             CallResult<object>? callResult = null;
-            await socketConnection.SendAndWait(request, ResponseTimeout, data => HandleSubscriptionResponse(socketConnection, subscription, request, data, out callResult)).ConfigureAwait(false);
+            await socketConnection.SendAndWaitAsync(request, ResponseTimeout, data => HandleSubscriptionResponse(socketConnection, subscription, request, data, out callResult)).ConfigureAwait(false);
 
             if (callResult?.Success == true)
                 subscription.Confirmed = true;
@@ -228,9 +228,9 @@ namespace CryptoExchange.Net
         /// <param name="request">The request to send, will be serialized to json</param>
         /// <param name="authenticated">If the query is to an authenticated endpoint</param>
         /// <returns></returns>
-        protected virtual Task<CallResult<T>> Query<T>(object request, bool authenticated)
+        protected virtual Task<CallResult<T>> QueryAsync<T>(object request, bool authenticated)
         {
-            return Query<T>(BaseAddress, request, authenticated);
+            return QueryAsync<T>(BaseAddress, request, authenticated);
         }
 
         /// <summary>
@@ -241,7 +241,7 @@ namespace CryptoExchange.Net
         /// <param name="request">The request to send</param>
         /// <param name="authenticated">Whether the socket should be authenticated</param>
         /// <returns></returns>
-        protected virtual async Task<CallResult<T>> Query<T>(string url, object request, bool authenticated)
+        protected virtual async Task<CallResult<T>> QueryAsync<T>(string url, object request, bool authenticated)
         {
             SocketConnection socketConnection;
             var released = false;
@@ -256,7 +256,7 @@ namespace CryptoExchange.Net
                     released = true;
                 }
 
-                var connectResult = await ConnectIfNeeded(socketConnection, authenticated).ConfigureAwait(false);
+                var connectResult = await ConnectIfNeededAsync(socketConnection, authenticated).ConfigureAwait(false);
                 if (!connectResult)
                     return new CallResult<T>(default, connectResult.Error);
             }
@@ -274,7 +274,7 @@ namespace CryptoExchange.Net
                 return new CallResult<T>(default, new ServerError("Socket is paused"));
             }
 
-            return await QueryAndWait<T>(socketConnection, request).ConfigureAwait(false);
+            return await QueryAndWaitAsync<T>(socketConnection, request).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -284,10 +284,10 @@ namespace CryptoExchange.Net
         /// <param name="socket">The connection to send and wait on</param>
         /// <param name="request">The request to send</param>
         /// <returns></returns>
-        protected virtual async Task<CallResult<T>> QueryAndWait<T>(SocketConnection socket, object request)
+        protected virtual async Task<CallResult<T>> QueryAndWaitAsync<T>(SocketConnection socket, object request)
         {
             var dataResult = new CallResult<T>(default, new ServerError("No response on query received"));
-            await socket.SendAndWait(request, ResponseTimeout, data =>
+            await socket.SendAndWaitAsync(request, ResponseTimeout, data =>
             {
                 if (!HandleQueryResponse<T>(socket, request, data, out var callResult))
                     return false;
@@ -305,19 +305,19 @@ namespace CryptoExchange.Net
         /// <param name="socket">The connection to check</param>
         /// <param name="authenticated">Whether the socket should authenticated</param>
         /// <returns></returns>
-        protected virtual async Task<CallResult<bool>> ConnectIfNeeded(SocketConnection socket, bool authenticated)
+        protected virtual async Task<CallResult<bool>> ConnectIfNeededAsync(SocketConnection socket, bool authenticated)
         {
             if (socket.Connected)
                 return new CallResult<bool>(true, null);
 
-            var connectResult = await ConnectSocket(socket).ConfigureAwait(false);
+            var connectResult = await ConnectSocketAsync(socket).ConfigureAwait(false);
             if (!connectResult)
                 return new CallResult<bool>(false, connectResult.Error);
 
             if (!authenticated || socket.Authenticated)
                 return new CallResult<bool>(true, null);
 
-            var result = await AuthenticateSocket(socket).ConfigureAwait(false);
+            var result = await AuthenticateSocketAsync(socket).ConfigureAwait(false);
             if (!result)
             {
                 log.Write(LogLevel.Warning, "Socket authentication failed");
@@ -378,14 +378,14 @@ namespace CryptoExchange.Net
         /// </summary>
         /// <param name="socketConnection">The socket connection that should be authenticated</param>
         /// <returns></returns>
-        protected internal abstract Task<CallResult<bool>> AuthenticateSocket(SocketConnection socketConnection);
+        protected internal abstract Task<CallResult<bool>> AuthenticateSocketAsync(SocketConnection socketConnection);
         /// <summary>
         /// Needs to unsubscribe a subscription, typically by sending an unsubscribe request. If multiple subscriptions per socket is not allowed this can just return since the socket will be closed anyway
         /// </summary>
         /// <param name="connection">The connection on which to unsubscribe</param>
         /// <param name="subscriptionToUnsub">The subscription to unsubscribe</param>
         /// <returns></returns>
-        protected internal abstract Task<bool> Unsubscribe(SocketConnection connection, SocketSubscription subscriptionToUnsub);
+        protected internal abstract Task<bool> UnsubscribeAsync(SocketConnection connection, SocketSubscription subscriptionToUnsub);
 
         /// <summary>
         /// Optional handler to interpolate data before sending it to the handlers
@@ -494,9 +494,9 @@ namespace CryptoExchange.Net
         /// </summary>
         /// <param name="socketConnection">The socket to connect</param>
         /// <returns></returns>
-        protected virtual async Task<CallResult<bool>> ConnectSocket(SocketConnection socketConnection)
+        protected virtual async Task<CallResult<bool>> ConnectSocketAsync(SocketConnection socketConnection)
         {
-            if (await socketConnection.Socket.Connect().ConfigureAwait(false))
+            if (await socketConnection.Socket.ConnectAsync().ConfigureAwait(false))
             {
                 sockets.TryAdd(socketConnection.Socket.Id, socketConnection);
                 return new CallResult<bool>(true, null);
@@ -579,20 +579,20 @@ namespace CryptoExchange.Net
         /// </summary>
         /// <param name="subscription">The subscription to unsubscribe</param>
         /// <returns></returns>
-        public virtual async Task Unsubscribe(UpdateSubscription subscription)
+        public virtual async Task UnsubscribeAsync(UpdateSubscription subscription)
         {
             if (subscription == null)
                 throw new ArgumentNullException(nameof(subscription));
 
             log.Write(LogLevel.Information, "Closing subscription");
-            await subscription.Close().ConfigureAwait(false);
+            await subscription.CloseAsync().ConfigureAwait(false);
         }
 
         /// <summary>
         /// Unsubscribe all subscriptions
         /// </summary>
         /// <returns></returns>
-        public virtual async Task UnsubscribeAll()
+        public virtual async Task UnsubscribeAllAsync()
         {
             log.Write(LogLevel.Debug, $"Closing all {sockets.Sum(s => s.Value.SubscriptionCount)} subscriptions");
 
@@ -602,7 +602,7 @@ namespace CryptoExchange.Net
                 {
                     var socketList = sockets.Values;
                     foreach (var sub in socketList)
-                        tasks.Add(sub.Close());
+                        tasks.Add(sub.CloseAsync());
                 }
 
                 await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
@@ -618,7 +618,7 @@ namespace CryptoExchange.Net
             periodicEvent?.Set();
             periodicEvent?.Dispose();
             log.Write(LogLevel.Debug, "Disposing socket client, closing all subscriptions");
-            Task.Run(UnsubscribeAll).Wait();
+            Task.Run(UnsubscribeAllAsync).ConfigureAwait(false).GetAwaiter().GetResult();
             semaphoreSlim?.Dispose();
             base.Dispose();
         }

@@ -47,7 +47,7 @@ namespace CryptoExchange.Net.UnitTests.TestImplementations
             }
         }
 
-        public Task<bool> Connect()
+        public Task<bool> ConnectAsync()
         {
             Connected = CanConnect;
             ConnectCalls++;
@@ -66,7 +66,7 @@ namespace CryptoExchange.Net.UnitTests.TestImplementations
         {
         }
 
-        public Task Close()
+        public Task CloseAsync()
         {
             Connected = false;
             DisconnectTime = DateTime.UtcNow;

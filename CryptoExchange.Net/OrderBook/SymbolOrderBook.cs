@@ -230,12 +230,6 @@ namespace CryptoExchange.Net.OrderBook
         /// Start connecting and synchronizing the order book
         /// </summary>
         /// <returns></returns>
-        public CallResult<bool> Start() => StartAsync().Result;
-
-        /// <summary>
-        /// Start connecting and synchronizing the order book
-        /// </summary>
-        /// <returns></returns>
         public async Task<CallResult<bool>> StartAsync()
         {
             log.Write(LogLevel.Debug, $"{Id} order book {Symbol} starting");
@@ -248,7 +242,7 @@ namespace CryptoExchange.Net.OrderBook
 
             subscription = startResult.Data;
             subscription.ConnectionLost += Reset;
-            subscription.ConnectionRestored += async time => await Resync().ConfigureAwait(false);
+            subscription.ConnectionRestored += async time => await ResyncAsync().ConfigureAwait(false);
             Status = OrderBookStatus.Synced;
             return new CallResult<bool>(true, null);
         }
@@ -302,7 +296,7 @@ namespace CryptoExchange.Net.OrderBook
             DoReset();
         }
 
-        private async Task Resync()
+        private async Task ResyncAsync()
         {
             Status = OrderBookStatus.Syncing;
             var success = false;
@@ -323,12 +317,6 @@ namespace CryptoExchange.Net.OrderBook
         /// Stop syncing the order book
         /// </summary>
         /// <returns></returns>
-        public void Stop() => StopAsync().Wait();
-
-        /// <summary>
-        /// Stop syncing the order book
-        /// </summary>
-        /// <returns></returns>
         public async Task StopAsync()
         {
             log.Write(LogLevel.Debug, $"{Id} order book {Symbol} stopping");
@@ -338,7 +326,7 @@ namespace CryptoExchange.Net.OrderBook
                 await _processTask.ConfigureAwait(false);
 
             if(subscription != null)
-                await subscription.Close().ConfigureAwait(false);
+                await subscription.CloseAsync().ConfigureAwait(false);
         }
 
         /// <summary>
@@ -443,7 +431,7 @@ namespace CryptoExchange.Net.OrderBook
                     if (asks.First().Key < bids.First().Key)
                     {
                         log.Write(LogLevel.Warning, $"{Id} order book {Symbol} detected out of sync order book. Resyncing");
-                        _ = subscription?.Reconnect();
+                        _ = subscription?.ReconnectAsync();
                         return;
                     }                    
 
@@ -473,7 +461,7 @@ namespace CryptoExchange.Net.OrderBook
                 if(!checksumResult)
                 {
                     log.Write(LogLevel.Warning, $"{Id} order book {Symbol} out of sync. Resyncing");
-                    _ = subscription?.Reconnect();
+                    _ = subscription?.ReconnectAsync();
                     return;
                 }
             }
@@ -612,7 +600,7 @@ namespace CryptoExchange.Net.OrderBook
             {
                 // Out of sync
                 log.Write(LogLevel.Warning, $"{Id} order book {Symbol} out of sync (expected { LastSequenceNumber + 1}, was {sequence}), reconnecting");
-                subscription?.Reconnect();
+                subscription?.ReconnectAsync();
                 return false;
             }
 
@@ -649,7 +637,7 @@ namespace CryptoExchange.Net.OrderBook
         /// </summary>
         /// <param name="timeout">Max wait time</param>
         /// <returns></returns>
-        protected async Task<CallResult<bool>> WaitForSetOrderBook(int timeout)
+        protected async Task<CallResult<bool>> WaitForSetOrderBookAsync(int timeout)
         {
             var startWait = DateTime.UtcNow;
             while (!bookSet && Status == OrderBookStatus.Syncing)

@@ -173,7 +173,7 @@ namespace CryptoExchange.Net
         /// <param name="deserializer">The JsonSerializer to use for deserialization</param>
         /// <returns></returns>
         [return: NotNull]
-        protected virtual async Task<WebCallResult<T>> SendRequest<T>(Uri uri, HttpMethod method, CancellationToken cancellationToken,
+        protected virtual async Task<WebCallResult<T>> SendRequestAsync<T>(Uri uri, HttpMethod method, CancellationToken cancellationToken,
             Dictionary<string, object>? parameters = null, bool signed = false, bool checkResult = true, 
             PostParameters? postPosition = null, ArrayParametersSerialization? arraySerialization = null, int credits = 1,
             JsonSerializer? deserializer = null) where T : class
@@ -205,7 +205,7 @@ namespace CryptoExchange.Net
                 paramString = " with request body " + request.Content;
 
             log.Write(LogLevel.Debug, $"[{requestId}] Sending {method}{(signed ? " signed" : "")} request to {request.Uri}{paramString ?? " "}{(apiProxy == null ? "" : $" via proxy {apiProxy.Host}")}");
-            return await GetResponse<T>(request, deserializer, cancellationToken).ConfigureAwait(false);
+            return await GetResponseAsync<T>(request, deserializer, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -215,17 +215,17 @@ namespace CryptoExchange.Net
         /// <param name="deserializer">The JsonSerializer to use for deserialization</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
-        protected virtual async Task<WebCallResult<T>> GetResponse<T>(IRequest request, JsonSerializer? deserializer, CancellationToken cancellationToken)
+        protected virtual async Task<WebCallResult<T>> GetResponseAsync<T>(IRequest request, JsonSerializer? deserializer, CancellationToken cancellationToken)
         {
             try
             {
                 TotalRequestsMade++;
                 var sw = Stopwatch.StartNew();
-                var response = await request.GetResponse(cancellationToken).ConfigureAwait(false);
+                var response = await request.GetResponseAsync(cancellationToken).ConfigureAwait(false);
                 sw.Stop();
                 var statusCode = response.StatusCode;
                 var headers = response.ResponseHeaders;
-                var responseStream = await response.GetResponseStream().ConfigureAwait(false);
+                var responseStream = await response.GetResponseStreamAsync().ConfigureAwait(false);
                 if (response.IsSuccessStatusCode)
                 {
                     // If we have to manually parse error responses (can't rely on HttpStatusCode) we'll need to read the full
@@ -244,7 +244,7 @@ namespace CryptoExchange.Net
                             return WebCallResult<T>.CreateErrorResult(response.StatusCode, response.ResponseHeaders, parseResult.Error!);
 
                         // Let the library implementation see if it is an error response, and if so parse the error
-                        var error = await TryParseError(parseResult.Data).ConfigureAwait(false);
+                        var error = await TryParseErrorAsync(parseResult.Data).ConfigureAwait(false);
                         if (error != null)
                             return WebCallResult<T>.CreateErrorResult(response.StatusCode, response.ResponseHeaders, error);
 
@@ -255,7 +255,7 @@ namespace CryptoExchange.Net
                     else
                     {
                         // Success status code, and we don't have to check for errors. Continue deserializing directly from the stream
-                        var desResult = await Deserialize<T>(responseStream, deserializer, request.RequestId, sw.ElapsedMilliseconds).ConfigureAwait(false);
+                        var desResult = await DeserializeAsync<T>(responseStream, deserializer, request.RequestId, sw.ElapsedMilliseconds).ConfigureAwait(false);
                         responseStream.Close();
                         response.Close();
 
@@ -308,7 +308,7 @@ namespace CryptoExchange.Net
         /// </summary>
         /// <param name="data">Received data</param>
         /// <returns>Null if not an error, Error otherwise</returns>
-        protected virtual Task<ServerError?> TryParseError(JToken data)
+        protected virtual Task<ServerError?> TryParseErrorAsync(JToken data)
         {
             return Task.FromResult<ServerError?>(null);
         }

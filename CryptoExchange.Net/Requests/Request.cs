@@ -71,7 +71,7 @@ namespace CryptoExchange.Net.Requests
         }
 
         /// <inheritdoc />
-        public async Task<IResponse> GetResponse(CancellationToken cancellationToken)
+        public async Task<IResponse> GetResponseAsync(CancellationToken cancellationToken)
         {
             return new Response(await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false));
         }

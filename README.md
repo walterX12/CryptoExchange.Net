@@ -309,6 +309,11 @@ private void SomeMethod()
 ````
 
 ## Release notes
+* Version 4.0.0-beta11 - 09 Jul 2021
+    * Added CalculateAverageFillPrice to SymbolOrderBook
+    * Added Book property to SymbolOrderBook
+    * Added Async postfix to async methods
+
 * Version 4.0.0-beta10 - 07 Jul 2021
     * Updated BaseConverter to be case sensitive
     * Added ExchangeHelpers class containing some helper methods

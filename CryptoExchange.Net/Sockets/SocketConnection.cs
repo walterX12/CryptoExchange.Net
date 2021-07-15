@@ -440,7 +440,7 @@ namespace CryptoExchange.Net.Sockets
 
             var shouldCloseConnection = false;
             lock (subscriptionLock)
-                shouldCloseConnection = subscriptions.Count(r => r.UserSubscription && subscription != r) == 0;
+                shouldCloseConnection = !subscriptions.Any(r => r.UserSubscription && subscription != r);
 
             if (shouldCloseConnection)
                 await CloseAsync().ConfigureAwait(false);

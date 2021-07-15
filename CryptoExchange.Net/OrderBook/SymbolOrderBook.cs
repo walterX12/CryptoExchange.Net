@@ -2,7 +2,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -546,13 +545,13 @@ namespace CryptoExchange.Net.OrderBook
 
             if (Levels.HasValue && strictLevels)
             {
-                while (this.bids.Count() > Levels.Value)
+                while (this.bids.Count > Levels.Value)
                 {
                     BidCount--;
                     this.bids.Remove(this.bids.Last().Key);
                 }
 
-                while (this.asks.Count() > Levels.Value)
+                while (this.asks.Count > Levels.Value)
                 {
                     AskCount--;
                     this.asks.Remove(this.asks.Last().Key);
@@ -679,7 +678,7 @@ namespace CryptoExchange.Net.OrderBook
         /// <returns></returns>
         public string ToString(int numberOfEntries)
         {
-            var result = "";
+            var result = string.Empty;
             result += $"Asks ({AskCount}): {Environment.NewLine}";
             foreach (var entry in Asks.Take(numberOfEntries).Reverse())
                 result += $"  {entry.Price.ToString(CultureInfo.InvariantCulture).PadLeft(8)} | {entry.Quantity.ToString(CultureInfo.InvariantCulture).PadRight(8)}{Environment.NewLine}";

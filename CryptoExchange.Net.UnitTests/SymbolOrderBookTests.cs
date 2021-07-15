@@ -1,14 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using CryptoExchange.Net.Interfaces;
-using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
 using CryptoExchange.Net.OrderBook;
 using CryptoExchange.Net.Sockets;
-using CryptoExchange.Net.UnitTests.TestImplementations;
-using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
 namespace CryptoExchange.Net.UnitTests

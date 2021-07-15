@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading;
-using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
 using CryptoExchange.Net.Sockets;
 using CryptoExchange.Net.UnitTests.TestImplementations;

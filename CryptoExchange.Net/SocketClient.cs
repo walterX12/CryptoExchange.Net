@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using CryptoExchange.Net.Authentication;
 using CryptoExchange.Net.Interfaces;
-using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
 using CryptoExchange.Net.Sockets;
 using Microsoft.Extensions.Logging;
@@ -350,7 +349,6 @@ namespace CryptoExchange.Net
         /// if not some other method has be implemented to match the messages).
         /// If the messages match, the callResult out parameter should be set with the deserialized data in the from of (T) and return true.
         /// </summary>
-        /// <typeparam name="T">The type of response that is expected on the query</typeparam>
         /// <param name="socketConnection">The socket connection</param>
         /// <param name="subscription">A subscription that waiting for a subscription response</param>
         /// <param name="request">The request that the subscription sent</param>
@@ -369,6 +367,7 @@ namespace CryptoExchange.Net
         /// <summary>
         /// Needs to check if a received message matches a handler by identifier. Generally used by GenericHandlers. For example; a generic handler is registered which handles ping messages
         /// from the server. This method should check if the message received is a ping message and the identifer is the identifier of the GenericHandler
+        /// </summary>
         /// <param name="message">The received data</param>
         /// <param name="identifier">The string identifier of the handler</param>
         /// <returns>True if the message is for the handler which has the identifier</returns>

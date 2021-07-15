@@ -1,7 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace CryptoExchange.Net.Sockets
 {
@@ -21,7 +19,7 @@ namespace CryptoExchange.Net.Sockets
         /// <summary>
         /// The originally received string data
         /// </summary>
-        public string OriginalData { get; set; }
+        public string? OriginalData { get; set; }
         /// <summary>
         /// The timestamp of when the data was received
         /// </summary>
@@ -34,7 +32,7 @@ namespace CryptoExchange.Net.Sockets
         /// <param name="jsonData"></param>
         /// <param name="originalData"></param>
         /// <param name="timestamp"></param>
-        public MessageEvent(SocketConnection connection, JToken jsonData, string originalData, DateTime timestamp)
+        public MessageEvent(SocketConnection connection, JToken jsonData, string? originalData, DateTime timestamp)
         {
             Connection = connection;
             JsonData = jsonData;

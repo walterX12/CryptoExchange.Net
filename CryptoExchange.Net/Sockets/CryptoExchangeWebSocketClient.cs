@@ -7,10 +7,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
-using System.Net.Security;
 using System.Net.WebSockets;
 using System.Security.Authentication;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,8 +27,8 @@ namespace CryptoExchange.Net.Sockets
         private Task? _sendTask;
         private Task? _receiveTask;
         private Task? _timeoutTask;
-        private AutoResetEvent _sendEvent;
-        private ConcurrentQueue<byte[]> _sendBuffer;
+        private readonly AutoResetEvent _sendEvent;
+        private readonly ConcurrentQueue<byte[]> _sendBuffer;
         private readonly IDictionary<string, string> cookies;
         private readonly IDictionary<string, string> headers;
         private CancellationTokenSource _ctsSource;
@@ -181,7 +179,7 @@ namespace CryptoExchange.Net.Sockets
             _sendBuffer = new ConcurrentQueue<byte[]>();
             _ctsSource = new CancellationTokenSource();
 
-            CreateSocket();
+            _socket = CreateSocket();
         }
 
         /// <summary>
@@ -269,9 +267,9 @@ namespace CryptoExchange.Net.Sockets
             _ctsSource.Cancel();
             _sendEvent.Set();
             if (waitSend)
-                tasksToAwait.Add(_sendTask);
+                tasksToAwait.Add(_sendTask!);
             if (waitReceive)
-                tasksToAwait.Add(_receiveTask);
+                tasksToAwait.Add(_receiveTask!);
             if (_timeoutTask != null)
                 tasksToAwait.Add(_timeoutTask);
 
@@ -303,24 +301,25 @@ namespace CryptoExchange.Net.Sockets
             log.Write(LogLevel.Debug, $"Socket {Id} resetting");
             _ctsSource = new CancellationTokenSource();
             _closing = false;
-            CreateSocket();
+            _socket = CreateSocket();
         }
         
         /// <summary>
         /// Create the socket object
         /// </summary>
-        private void CreateSocket()
+        private ClientWebSocket CreateSocket()
         {
             var cookieContainer = new CookieContainer();
             foreach (var cookie in cookies)
                 cookieContainer.Add(new Cookie(cookie.Key, cookie.Value));
 
-            _socket = new ClientWebSocket();
-            _socket.Options.Cookies = cookieContainer;
+            var socket = new ClientWebSocket();
+            socket.Options.Cookies = cookieContainer;
             foreach (var header in headers)
-                _socket.Options.SetRequestHeader(header.Key, header.Value);
-            _socket.Options.KeepAliveInterval = TimeSpan.FromSeconds(10);
-            _socket.Options.SetBuffer(65536, 65536); // Setting it to anything bigger than 65536 throws an exception in .net framework
+                socket.Options.SetRequestHeader(header.Key, header.Value);
+            socket.Options.KeepAliveInterval = TimeSpan.FromSeconds(10);
+            socket.Options.SetBuffer(65536, 65536); // Setting it to anything bigger than 65536 throws an exception in .net framework
+            return socket;
         }
 
         /// <summary>

@@ -1591,10 +1591,33 @@
             <param name="headers"></param>
             <returns></returns>
         </member>
+        <member name="T:CryptoExchange.Net.Logging.ConsoleLogger">
+            <summary>
+            Log to console
+            </summary>
+        </member>
+        <member name="M:CryptoExchange.Net.Logging.ConsoleLogger.BeginScope``1(``0)">
+            <inheritdoc />
+        </member>
+        <member name="M:CryptoExchange.Net.Logging.ConsoleLogger.IsEnabled(Microsoft.Extensions.Logging.LogLevel)">
+            <inheritdoc />
+        </member>
+        <member name="M:CryptoExchange.Net.Logging.ConsoleLogger.Log``1(Microsoft.Extensions.Logging.LogLevel,Microsoft.Extensions.Logging.EventId,``0,System.Exception,System.Func{``0,System.Exception,System.String})">
+            <inheritdoc />
+        </member>
         <member name="T:CryptoExchange.Net.Logging.DebugLogger">
             <summary>
             Default log writer, writes to debug
             </summary>
+        </member>
+        <member name="M:CryptoExchange.Net.Logging.DebugLogger.BeginScope``1(``0)">
+            <inheritdoc />
+        </member>
+        <member name="M:CryptoExchange.Net.Logging.DebugLogger.IsEnabled(Microsoft.Extensions.Logging.LogLevel)">
+            <inheritdoc />
+        </member>
+        <member name="M:CryptoExchange.Net.Logging.DebugLogger.Log``1(Microsoft.Extensions.Logging.LogLevel,Microsoft.Extensions.Logging.EventId,``0,System.Exception,System.Func{``0,System.Exception,System.String})">
+            <inheritdoc />
         </member>
         <member name="T:CryptoExchange.Net.Logging.Log">
             <summary>
@@ -1854,8 +1877,8 @@
             <summary>
             Copy the WebCallResult to a new data type
             </summary>
-            <typeparam name="K"></typeparam>
-            <param name="data"></param>
+            <typeparam name="K">The new type</typeparam>
+            <param name="data">The data of the new type</param>
             <returns></returns>
         </member>
         <member name="M:CryptoExchange.Net.Objects.WebCallResult`1.CreateErrorResult(System.Nullable{System.Net.HttpStatusCode},System.Collections.Generic.IEnumerable{System.Collections.Generic.KeyValuePair{System.String,System.Collections.Generic.IEnumerable{System.String}}},CryptoExchange.Net.Objects.Error)">
@@ -3124,7 +3147,6 @@
             if not some other method has be implemented to match the messages).
             If the messages match, the callResult out parameter should be set with the deserialized data in the from of (T) and return true.
             </summary>
-            <typeparam name="T">The type of response that is expected on the query</typeparam>
             <param name="socketConnection">The socket connection</param>
             <param name="subscription">A subscription that waiting for a subscription response</param>
             <param name="request">The request that the subscription sent</param>
@@ -3141,7 +3163,15 @@
             <param name="request">The subscription request</param>
             <returns>True if the message is for the subscription which sent the request</returns>
         </member>
-        <!-- Badly formed XML comment ignored for member "M:CryptoExchange.Net.SocketClient.MessageMatchesHandler(Newtonsoft.Json.Linq.JToken,System.String)" -->
+        <member name="M:CryptoExchange.Net.SocketClient.MessageMatchesHandler(Newtonsoft.Json.Linq.JToken,System.String)">
+            <summary>
+            Needs to check if a received message matches a handler by identifier. Generally used by GenericHandlers. For example; a generic handler is registered which handles ping messages
+            from the server. This method should check if the message received is a ping message and the identifer is the identifier of the GenericHandler
+            </summary>
+            <param name="message">The received data</param>
+            <param name="identifier">The string identifier of the handler</param>
+            <returns>True if the message is for the handler which has the identifier</returns>
+        </member>
         <member name="M:CryptoExchange.Net.SocketClient.AuthenticateSocketAsync(CryptoExchange.Net.Sockets.SocketConnection)">
             <summary>
             Needs to authenticate the socket so authenticated queries/subscriptions can be made on this socket connection
@@ -3789,9 +3819,7 @@
         <member name="M:CryptoExchange.Net.Sockets.WebsocketFactory.CreateWebsocket(CryptoExchange.Net.Logging.Log,System.String,System.Collections.Generic.IDictionary{System.String,System.String},System.Collections.Generic.IDictionary{System.String,System.String})">
             <inheritdoc />
         </member>
-    </members>
-</doc>
-System.Diagnostics.CodeAnalysis.AllowNullAttribute">
+        <member name="T:System.Diagnostics.CodeAnalysis.AllowNullAttribute">
             <summary>
                 Specifies that <see langword="null"/> is allowed as an input even if the
                 corresponding type disallows it.

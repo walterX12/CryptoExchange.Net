@@ -80,9 +80,9 @@ namespace CryptoExchange.Net.Authentication
         /// </summary>
         /// <param name="buff"></param>
         /// <returns></returns>
-        protected string ByteToString(byte[] buff)
+        protected static string ByteToString(byte[] buff)
         {
-            var result = "";
+            var result = string.Empty;
             foreach (var t in buff)
                 result += t.ToString("X2"); /* hex format */
             return result;

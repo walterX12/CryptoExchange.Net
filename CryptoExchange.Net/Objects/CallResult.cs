@@ -69,11 +69,13 @@ namespace CryptoExchange.Net.Objects
         /// </summary>
         /// <param name="data"></param>
         /// <param name="error"></param>
+#pragma warning disable 8618
         public CallResult([AllowNull]T data, Error? error): base(error)
+#pragma warning restore 8618
         {
 #pragma warning disable 8601
             Data = data;
-#pragma warning disable 8601
+#pragma warning restore 8601
         }
 
         /// <summary>
@@ -228,10 +230,10 @@ namespace CryptoExchange.Net.Objects
         /// <summary>
         /// Copy the WebCallResult to a new data type
         /// </summary>
-        /// <typeparam name="K"></typeparam>
-        /// <param name="data"></param>
+        /// <typeparam name="K">The new type</typeparam>
+        /// <param name="data">The data of the new type</param>
         /// <returns></returns>
-        public WebCallResult<K> As<K>(K data)
+        public WebCallResult<K> As<K>([AllowNull] K data)
         {
             return new WebCallResult<K>(ResponseStatusCode, ResponseHeaders, OriginalData, data, Error);
         }

@@ -78,18 +78,18 @@ namespace CryptoExchange.Net.Sockets
         /// Close the subscription
         /// </summary>
         /// <returns></returns>
-        public async Task Close()
+        public Task CloseAsync()
         {
-            await connection.Close(subscription).ConfigureAwait(false);
+            return connection.CloseAsync(subscription);
         }
 
         /// <summary>
         /// Close the socket to cause a reconnect
         /// </summary>
         /// <returns></returns>
-        internal Task Reconnect()
+        internal Task ReconnectAsync()
         {
-            return connection.Socket.Close();
+            return connection.Socket.CloseAsync();
         }
     }
 }

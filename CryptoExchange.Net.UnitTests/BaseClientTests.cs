@@ -1,13 +1,10 @@
 ﻿using CryptoExchange.Net.Authentication;
-using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
 using CryptoExchange.Net.UnitTests.TestImplementations;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Text;
 
 namespace CryptoExchange.Net.UnitTests
 {

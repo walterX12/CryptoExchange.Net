@@ -7,10 +7,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
-using System.Net.Security;
 using System.Net.WebSockets;
 using System.Security.Authentication;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,8 +27,8 @@ namespace CryptoExchange.Net.Sockets
         private Task? _sendTask;
         private Task? _receiveTask;
         private Task? _timeoutTask;
-        private AutoResetEvent _sendEvent;
-        private ConcurrentQueue<byte[]> _sendBuffer;
+        private readonly AutoResetEvent _sendEvent;
+        private readonly ConcurrentQueue<byte[]> _sendBuffer;
         private readonly IDictionary<string, string> cookies;
         private readonly IDictionary<string, string> headers;
         private CancellationTokenSource _ctsSource;
@@ -181,7 +179,7 @@ namespace CryptoExchange.Net.Sockets
             _sendBuffer = new ConcurrentQueue<byte[]>();
             _ctsSource = new CancellationTokenSource();
 
-            CreateSocket();
+            _socket = CreateSocket();
         }
 
         /// <summary>
@@ -199,7 +197,7 @@ namespace CryptoExchange.Net.Sockets
         /// Connect the websocket
         /// </summary>
         /// <returns>True if successfull</returns>
-        public virtual async Task<bool> Connect()
+        public virtual async Task<bool> ConnectAsync()
         {
             log.Write(LogLevel.Debug, $"Socket {Id} connecting");
             try
@@ -216,10 +214,10 @@ namespace CryptoExchange.Net.Sockets
             }
 
             log.Write(LogLevel.Debug, $"Socket {Id} connected");
-            _sendTask = Task.Run(async () => await SendLoop().ConfigureAwait(false));
-            _receiveTask = Task.Run(ReceiveLoop);
+            _sendTask = Task.Run(async () => await SendLoopAsync().ConfigureAwait(false));
+            _receiveTask = Task.Run(ReceiveLoopAsync);
             if (Timeout != default)
-                _timeoutTask = Task.Run(CheckTimeout);
+                _timeoutTask = Task.Run(CheckTimeoutAsync);
             return true;
         }
 
@@ -241,10 +239,10 @@ namespace CryptoExchange.Net.Sockets
         /// Close the websocket
         /// </summary>
         /// <returns></returns>
-        public virtual async Task Close()
+        public virtual async Task CloseAsync()
         {
             log.Write(LogLevel.Debug, $"Socket {Id} closing");
-            await CloseInternal(true, true, true).ConfigureAwait(false);
+            await CloseInternalAsync(true, true, true).ConfigureAwait(false);
         }
         
         /// <summary>
@@ -254,7 +252,7 @@ namespace CryptoExchange.Net.Sockets
         /// <param name="waitSend"></param>
         /// <param name="waitReceive"></param>
         /// <returns></returns>
-        private async Task CloseInternal(bool closeSocket, bool waitSend, bool waitReceive)
+        private async Task CloseInternalAsync(bool closeSocket, bool waitSend, bool waitReceive)
         {
             if (_closing)
                 return;
@@ -269,9 +267,9 @@ namespace CryptoExchange.Net.Sockets
             _ctsSource.Cancel();
             _sendEvent.Set();
             if (waitSend)
-                tasksToAwait.Add(_sendTask);
+                tasksToAwait.Add(_sendTask!);
             if (waitReceive)
-                tasksToAwait.Add(_receiveTask);
+                tasksToAwait.Add(_receiveTask!);
             if (_timeoutTask != null)
                 tasksToAwait.Add(_timeoutTask);
 
@@ -303,31 +301,32 @@ namespace CryptoExchange.Net.Sockets
             log.Write(LogLevel.Debug, $"Socket {Id} resetting");
             _ctsSource = new CancellationTokenSource();
             _closing = false;
-            CreateSocket();
+            _socket = CreateSocket();
         }
         
         /// <summary>
         /// Create the socket object
         /// </summary>
-        private void CreateSocket()
+        private ClientWebSocket CreateSocket()
         {
             var cookieContainer = new CookieContainer();
             foreach (var cookie in cookies)
                 cookieContainer.Add(new Cookie(cookie.Key, cookie.Value));
 
-            _socket = new ClientWebSocket();
-            _socket.Options.Cookies = cookieContainer;
+            var socket = new ClientWebSocket();
+            socket.Options.Cookies = cookieContainer;
             foreach (var header in headers)
-                _socket.Options.SetRequestHeader(header.Key, header.Value);
-            _socket.Options.KeepAliveInterval = TimeSpan.FromSeconds(10);
-            _socket.Options.SetBuffer(65536, 65536); // Setting it to anything bigger than 65536 throws an exception in .net framework
+                socket.Options.SetRequestHeader(header.Key, header.Value);
+            socket.Options.KeepAliveInterval = TimeSpan.FromSeconds(10);
+            socket.Options.SetBuffer(65536, 65536); // Setting it to anything bigger than 65536 throws an exception in .net framework
+            return socket;
         }
 
         /// <summary>
         /// Loop for sending data
         /// </summary>
         /// <returns></returns>
-        private async Task SendLoop()
+        private async Task SendLoopAsync()
         {
             while (true)
             {
@@ -352,7 +351,7 @@ namespace CryptoExchange.Net.Sockets
                 {
                     // Connection closed unexpectedly                        
                     Handle(errorHandlers, wse);
-                    await CloseInternal(false, false, true).ConfigureAwait(false);
+                    await CloseInternalAsync(false, false, true).ConfigureAwait(false);
                     break;
                 }
             }
@@ -362,7 +361,7 @@ namespace CryptoExchange.Net.Sockets
         /// Loop for receiving and reassembling data
         /// </summary>
         /// <returns></returns>
-        private async Task ReceiveLoop()
+        private async Task ReceiveLoopAsync()
         {
             var buffer = new ArraySegment<byte>(new byte[4096]);
             var received = 0;
@@ -390,14 +389,14 @@ namespace CryptoExchange.Net.Sockets
                     {
                         // Connection closed unexpectedly        
                         Handle(errorHandlers, wse);
-                        await CloseInternal(false, true, false).ConfigureAwait(false);
+                        await CloseInternalAsync(false, true, false).ConfigureAwait(false);
                         break;
                     }
 
                     if (receiveResult.MessageType == WebSocketMessageType.Close)
                     {
-                        // Connection closed unexpectedly        
-                        await CloseInternal(true, true, false).ConfigureAwait(false);
+                        // Connection closed unexpectedly
+                        await CloseInternalAsync(true, true, false).ConfigureAwait(false);
                         break;
                     }
 
@@ -498,7 +497,7 @@ namespace CryptoExchange.Net.Sockets
         /// Checks if there is no data received for a period longer than the specified timeout
         /// </summary>
         /// <returns></returns>
-        protected async Task CheckTimeout()
+        protected async Task CheckTimeoutAsync()
         {
             log.Write(LogLevel.Debug, $"Socket {Id} Starting task checking for no data received for {Timeout}");
             while (true)
@@ -509,7 +508,7 @@ namespace CryptoExchange.Net.Sockets
                 if (DateTime.UtcNow - LastActionTime > Timeout)
                 {
                     log.Write(LogLevel.Warning, $"Socket {Id} No data received for {Timeout}, reconnecting socket");
-                    _ = Close().ConfigureAwait(false);
+                    _ = CloseAsync().ConfigureAwait(false);
                     return;
                 }
                 try

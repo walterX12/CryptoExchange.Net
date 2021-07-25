@@ -51,6 +51,11 @@ namespace CryptoExchange.Net.Interfaces
         int BidCount { get; }
 
         /// <summary>
+        /// Get a snapshot of the book at this moment
+        /// </summary>
+        (IEnumerable<ISymbolOrderBookEntry> bids, IEnumerable<ISymbolOrderBookEntry> asks) Book { get; }
+
+        /// <summary>
         /// The list of asks
         /// </summary>
         IEnumerable<ISymbolOrderBookEntry> Asks { get; }
@@ -79,19 +84,7 @@ namespace CryptoExchange.Net.Interfaces
         /// Start connecting and synchronizing the order book
         /// </summary>
         /// <returns></returns>
-        CallResult<bool> Start();
-
-        /// <summary>
-        /// Start connecting and synchronizing the order book
-        /// </summary>
-        /// <returns></returns>
         Task<CallResult<bool>> StartAsync();
-
-        /// <summary>
-        /// Stop syncing the order book
-        /// </summary>
-        /// <returns></returns>
-        void Stop();
 
         /// <summary>
         /// Stop syncing the order book

@@ -2,7 +2,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -141,6 +140,18 @@ namespace CryptoExchange.Net.OrderBook
             }
         }
 
+        /// <summary>
+        /// Get a snapshot of the book at this moment
+        /// </summary>
+        public (IEnumerable<ISymbolOrderBookEntry> bids, IEnumerable<ISymbolOrderBookEntry> asks) Book
+        {
+            get
+            {
+                lock (bookLock)
+                    return (Bids, Asks);
+            }
+        }
+
         private class EmptySymbolOrderBookEntry : ISymbolOrderBookEntry
         {
             public decimal Quantity { get { return 0m; } set {; } }
@@ -218,25 +229,19 @@ namespace CryptoExchange.Net.OrderBook
         /// Start connecting and synchronizing the order book
         /// </summary>
         /// <returns></returns>
-        public CallResult<bool> Start() => StartAsync().Result;
-
-        /// <summary>
-        /// Start connecting and synchronizing the order book
-        /// </summary>
-        /// <returns></returns>
         public async Task<CallResult<bool>> StartAsync()
         {
             log.Write(LogLevel.Debug, $"{Id} order book {Symbol} starting");
             Status = OrderBookStatus.Connecting;
             _processTask = Task.Run(ProcessQueue);
 
-            var startResult = await DoStart().ConfigureAwait(false);
+            var startResult = await DoStartAsync().ConfigureAwait(false);
             if (!startResult)
                 return new CallResult<bool>(false, startResult.Error);
 
             subscription = startResult.Data;
             subscription.ConnectionLost += Reset;
-            subscription.ConnectionRestored += async time => await Resync().ConfigureAwait(false);
+            subscription.ConnectionRestored += async time => await ResyncAsync().ConfigureAwait(false);
             Status = OrderBookStatus.Synced;
             return new CallResult<bool>(true, null);
         }
@@ -290,7 +295,7 @@ namespace CryptoExchange.Net.OrderBook
             DoReset();
         }
 
-        private async Task Resync()
+        private async Task ResyncAsync()
         {
             Status = OrderBookStatus.Syncing;
             var success = false;
@@ -299,19 +304,13 @@ namespace CryptoExchange.Net.OrderBook
                 if (Status != OrderBookStatus.Syncing)
                     return;
 
-                var resyncResult = await DoResync().ConfigureAwait(false);
+                var resyncResult = await DoResyncAsync().ConfigureAwait(false);
                 success = resyncResult;
             }
 
             log.Write(LogLevel.Information, $"{Id} order book {Symbol} successfully resynchronized");
             Status = OrderBookStatus.Synced;
         }
-
-        /// <summary>
-        /// Stop syncing the order book
-        /// </summary>
-        /// <returns></returns>
-        public void Stop() => StopAsync().Wait();
 
         /// <summary>
         /// Stop syncing the order book
@@ -326,14 +325,14 @@ namespace CryptoExchange.Net.OrderBook
                 await _processTask.ConfigureAwait(false);
 
             if(subscription != null)
-                await subscription.Close().ConfigureAwait(false);
+                await subscription.CloseAsync().ConfigureAwait(false);
         }
 
         /// <summary>
         /// Start the order book
         /// </summary>
         /// <returns></returns>
-        protected abstract Task<CallResult<UpdateSubscription>> DoStart();
+        protected abstract Task<CallResult<UpdateSubscription>> DoStartAsync();
 
         /// <summary>
         /// Reset the order book
@@ -344,7 +343,7 @@ namespace CryptoExchange.Net.OrderBook
         /// Resync the order book
         /// </summary>
         /// <returns></returns>
-        protected abstract Task<CallResult<bool>> DoResync();
+        protected abstract Task<CallResult<bool>> DoResyncAsync();
 
         /// <summary>
         /// Validate a checksum with the current order book
@@ -431,7 +430,7 @@ namespace CryptoExchange.Net.OrderBook
                     if (asks.First().Key < bids.First().Key)
                     {
                         log.Write(LogLevel.Warning, $"{Id} order book {Symbol} detected out of sync order book. Resyncing");
-                        _ = subscription?.Reconnect();
+                        _ = subscription?.ReconnectAsync();
                         return;
                     }                    
 
@@ -461,7 +460,7 @@ namespace CryptoExchange.Net.OrderBook
                 if(!checksumResult)
                 {
                     log.Write(LogLevel.Warning, $"{Id} order book {Symbol} out of sync. Resyncing");
-                    _ = subscription?.Reconnect();
+                    _ = subscription?.ReconnectAsync();
                     return;
                 }
             }
@@ -546,13 +545,13 @@ namespace CryptoExchange.Net.OrderBook
 
             if (Levels.HasValue && strictLevels)
             {
-                while (this.bids.Count() > Levels.Value)
+                while (this.bids.Count > Levels.Value)
                 {
                     BidCount--;
                     this.bids.Remove(this.bids.Last().Key);
                 }
 
-                while (this.asks.Count() > Levels.Value)
+                while (this.asks.Count > Levels.Value)
                 {
                     AskCount--;
                     this.asks.Remove(this.asks.Last().Key);
@@ -600,7 +599,7 @@ namespace CryptoExchange.Net.OrderBook
             {
                 // Out of sync
                 log.Write(LogLevel.Warning, $"{Id} order book {Symbol} out of sync (expected { LastSequenceNumber + 1}, was {sequence}), reconnecting");
-                subscription?.Reconnect();
+                subscription?.ReconnectAsync();
                 return false;
             }
 
@@ -637,7 +636,7 @@ namespace CryptoExchange.Net.OrderBook
         /// </summary>
         /// <param name="timeout">Max wait time</param>
         /// <returns></returns>
-        protected async Task<CallResult<bool>> WaitForSetOrderBook(int timeout)
+        protected async Task<CallResult<bool>> WaitForSetOrderBookAsync(int timeout)
         {
             var startWait = DateTime.UtcNow;
             while (!bookSet && Status == OrderBookStatus.Syncing)
@@ -679,7 +678,7 @@ namespace CryptoExchange.Net.OrderBook
         /// <returns></returns>
         public string ToString(int numberOfEntries)
         {
-            var result = "";
+            var result = string.Empty;
             result += $"Asks ({AskCount}): {Environment.NewLine}";
             foreach (var entry in Asks.Take(numberOfEntries).Reverse())
                 result += $"  {entry.Price.ToString(CultureInfo.InvariantCulture).PadLeft(8)} | {entry.Quantity.ToString(CultureInfo.InvariantCulture).PadRight(8)}{Environment.NewLine}";

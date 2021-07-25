@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading;
-using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
 using CryptoExchange.Net.Sockets;
 using CryptoExchange.Net.UnitTests.TestImplementations;
@@ -141,7 +140,7 @@ namespace CryptoExchange.Net.UnitTests
             var ups = new UpdateSubscription(sub, SocketSubscription.CreateForIdentifier("Test", true, (e) => {}));
 
             // act
-            client.Unsubscribe(ups).Wait();
+            client.UnsubscribeAsync(ups).Wait();
 
             // assert
             Assert.IsTrue(socket.Connected == false);
@@ -162,7 +161,7 @@ namespace CryptoExchange.Net.UnitTests
             client.ConnectSocketSub(sub2);
 
             // act
-            client.UnsubscribeAll().Wait();
+            client.UnsubscribeAllAsync().Wait();
 
             // assert
             Assert.IsTrue(socket1.Connected == false);

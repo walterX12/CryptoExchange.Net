@@ -2,13 +2,11 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Net;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
 using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
 using Microsoft.Extensions.Logging;
@@ -127,7 +125,7 @@ namespace CryptoExchange.Net
         /// <returns></returns>
         public static string CreateParamString(this Dictionary<string, object> parameters, bool urlEncodeValues, ArrayParametersSerialization serializationType)
         {
-            var uriString = "";
+            var uriString = string.Empty;
             var arraysParameters = parameters.Where(p => p.Value.GetType().IsArray).ToList();
             foreach (var arrayEntry in arraysParameters)
             {
@@ -350,12 +348,12 @@ namespace CryptoExchange.Net
             while (exception != null)
             {
                 for (var i = 0; i < indent; i++)
-                    message.Append(" ");
+                    message.Append(' ');
                 message.Append(exception.GetType().Name);
                 message.Append(" - ");
                 message.AppendLine(exception.Message);
                 for (var i = 0; i < indent; i++)
-                    message.Append(" ");
+                    message.Append(' ');
                 message.AppendLine(exception.StackTrace);
 
                 indent += 2;

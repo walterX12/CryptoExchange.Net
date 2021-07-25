@@ -397,7 +397,7 @@ namespace CryptoExchange.Net.Sockets
                     if (receiveResult.MessageType == WebSocketMessageType.Close)
                     {
                         // Connection closed unexpectedly        
-                        await CloseInternal(true, true, true).ConfigureAwait(false);
+                        await CloseInternal(true, true, false).ConfigureAwait(false);
                         break;
                     }
 

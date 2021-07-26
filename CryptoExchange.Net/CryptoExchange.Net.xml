@@ -3414,11 +3414,10 @@
             </summary>
             <returns></returns>
         </member>
-        <member name="M:CryptoExchange.Net.Sockets.CryptoExchangeWebSocketClient.CloseInternalAsync(System.Boolean,System.Boolean,System.Boolean)">
+        <member name="M:CryptoExchange.Net.Sockets.CryptoExchangeWebSocketClient.CloseInternalAsync(System.Boolean,System.Boolean)">
             <summary>
             Internal close method, will wait for each task to complete to gracefully close
             </summary>
-            <param name="closeSocket"></param>
             <param name="waitSend"></param>
             <param name="waitReceive"></param>
             <returns></returns>

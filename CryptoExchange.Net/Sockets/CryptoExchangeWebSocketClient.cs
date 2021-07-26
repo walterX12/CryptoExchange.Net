@@ -242,28 +242,25 @@ namespace CryptoExchange.Net.Sockets
         public virtual async Task CloseAsync()
         {
             log.Write(LogLevel.Debug, $"Socket {Id} closing");
-            await CloseInternalAsync(true, true, true).ConfigureAwait(false);
+            await CloseInternalAsync(true, true).ConfigureAwait(false);
         }
         
         /// <summary>
         /// Internal close method, will wait for each task to complete to gracefully close
         /// </summary>
-        /// <param name="closeSocket"></param>
         /// <param name="waitSend"></param>
         /// <param name="waitReceive"></param>
         /// <returns></returns>
-        private async Task CloseInternalAsync(bool closeSocket, bool waitSend, bool waitReceive)
+        private async Task CloseInternalAsync(bool waitSend, bool waitReceive)
         {
             if (_closing)
                 return;
 
-            if(!closeSocket)
-                log.Write(LogLevel.Debug, $"Socket {Id} handling closed socket");
-
             _closing = true;
             var tasksToAwait = new List<Task>();
-            if(closeSocket)
+            if (_socket.State == WebSocketState.Open)
                 tasksToAwait.Add(_socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Closing", default));
+
             _ctsSource.Cancel();
             _sendEvent.Set();
             if (waitSend)
@@ -351,7 +348,7 @@ namespace CryptoExchange.Net.Sockets
                 {
                     // Connection closed unexpectedly                        
                     Handle(errorHandlers, wse);
-                    await CloseInternalAsync(false, false, true).ConfigureAwait(false);
+                    await CloseInternalAsync(false, true).ConfigureAwait(false);
                     break;
                 }
             }
@@ -389,14 +386,15 @@ namespace CryptoExchange.Net.Sockets
                     {
                         // Connection closed unexpectedly        
                         Handle(errorHandlers, wse);
-                        await CloseInternalAsync(false, true, false).ConfigureAwait(false);
+                        await CloseInternalAsync(true, false).ConfigureAwait(false);
                         break;
                     }
 
                     if (receiveResult.MessageType == WebSocketMessageType.Close)
                     {
-                        // Connection closed unexpectedly
-                        await CloseInternalAsync(true, true, false).ConfigureAwait(false);
+                        // Connection closed unexpectedly        
+                        log.Write(LogLevel.Debug, $"Socket {Id} received `Close` message");
+                        await CloseInternalAsync(true, false).ConfigureAwait(false);
                         break;
                     }
 

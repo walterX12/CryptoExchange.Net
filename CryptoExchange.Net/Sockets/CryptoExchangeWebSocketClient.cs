@@ -227,7 +227,7 @@ namespace CryptoExchange.Net.Sockets
         /// <param name="data">Data to send</param>
         public virtual void Send(string data)
         {
-            if (_socket.State != WebSocketState.Open)
+            if (_closing)
                 throw new InvalidOperationException("Can't send data when socket is not connected");
 
             var bytes = _encoding.GetBytes(data);
@@ -329,7 +329,7 @@ namespace CryptoExchange.Net.Sockets
             {
                 _sendEvent.WaitOne();
 
-                if (_closing || _socket.State != WebSocketState.Open)                
+                if (_closing)                
                     break;                
 
                 if (!_sendBuffer.TryDequeue(out var data))
@@ -500,7 +500,7 @@ namespace CryptoExchange.Net.Sockets
             log.Write(LogLevel.Debug, $"Socket {Id} Starting task checking for no data received for {Timeout}");
             while (true)
             {
-                if (_socket.State != WebSocketState.Open)
+                if (_closing)
                     return;
 
                 if (DateTime.UtcNow - LastActionTime > Timeout)

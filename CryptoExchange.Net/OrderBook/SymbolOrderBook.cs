@@ -380,6 +380,7 @@ namespace CryptoExchange.Net.OrderBook
                 if (Status == OrderBookStatus.Connecting || Status == OrderBookStatus.Disconnected)
                     return;
 
+                bookSet = true;
                 asks.Clear();
                 foreach (var ask in item.Asks)
                     asks.Add(ask.Price, ask);
@@ -474,8 +475,6 @@ namespace CryptoExchange.Net.OrderBook
         /// <param name="bidList">List of bids</param>
         protected void SetInitialOrderBook(long orderBookSequenceNumber, IEnumerable<ISymbolOrderBookEntry> bidList, IEnumerable<ISymbolOrderBookEntry> askList)
         {
-            bookSet = true;
-
             _processQueue.Enqueue(new InitialOrderBookItem { StartUpdateId = orderBookSequenceNumber, EndUpdateId = orderBookSequenceNumber, Asks = askList, Bids = bidList });
             _queueEvent.Set();
         }

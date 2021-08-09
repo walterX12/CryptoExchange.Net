@@ -309,6 +309,9 @@ private void SomeMethod()
 ````
 
 ## Release notes
+* Version 4.0.0-beta13 - 31 Jul 2021
+    * Fix for socket connection
+
 * Version 4.0.0-beta12 - 26 Jul 2021
     * Fix for socket connection
 

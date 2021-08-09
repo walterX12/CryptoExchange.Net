@@ -435,6 +435,9 @@ namespace CryptoExchange.Net.Sockets
         /// <returns></returns>
         public async Task CloseAsync(SocketSubscription subscription)
         {
+            if (!Socket.IsOpen)
+                return;
+
             if (subscription.Confirmed)
                 await socketClient.UnsubscribeAsync(this, subscription).ConfigureAwait(false);
 

@@ -309,6 +309,9 @@ private void SomeMethod()
 ````
 
 ## Release notes
+* Version 4.0.0-beta14 - 09 Aug 2021
+    * Fix for bug in processing order in SymbolOrderBook
+
 * Version 4.0.0-beta13 - 31 Jul 2021
     * Fix for socket connection
 

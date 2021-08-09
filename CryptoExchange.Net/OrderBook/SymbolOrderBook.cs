@@ -530,7 +530,7 @@ namespace CryptoExchange.Net.OrderBook
 
         private void ProcessRangeUpdates(long firstUpdateId, long lastUpdateId, IEnumerable<ISymbolOrderBookEntry> bids, IEnumerable<ISymbolOrderBookEntry> asks)
         {
-            if (lastUpdateId < LastSequenceNumber)
+            if (lastUpdateId <= LastSequenceNumber)
             {
                 log.Write(LogLevel.Debug, $"{Id} order book {Symbol} update skipped #{firstUpdateId}-{lastUpdateId}");
                 return;

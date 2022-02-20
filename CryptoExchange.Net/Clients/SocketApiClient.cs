@@ -1,3 +1,4 @@
+using CryptoExchange.Net.DataProcessors;
 using CryptoExchange.Net.Objects;
 
 namespace CryptoExchange.Net
@@ -12,7 +13,8 @@ namespace CryptoExchange.Net
         /// </summary>
         /// <param name="options">The base client options</param>
         /// <param name="apiOptions">The Api client options</param>
-        public SocketApiClient(BaseClientOptions options, ApiClientOptions apiOptions): base(options, apiOptions)
+        /// <param name="dataProcessor">The data processor</param>
+        public SocketApiClient(BaseClientOptions options, ApiClientOptions apiOptions, IDataProcessor dataProcessor): base(options, apiOptions, dataProcessor)
         {
         }
     }

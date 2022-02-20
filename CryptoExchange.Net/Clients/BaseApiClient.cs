@@ -1,5 +1,6 @@
 using System;
 using CryptoExchange.Net.Authentication;
+using CryptoExchange.Net.DataProcessors;
 using CryptoExchange.Net.Objects;
 
 namespace CryptoExchange.Net
@@ -41,14 +42,21 @@ namespace CryptoExchange.Net
         internal ApiClientOptions Options { get; }
 
         /// <summary>
+        /// Processor for received data
+        /// </summary>
+        public IDataProcessor DataProcessor { get; }
+
+        /// <summary>
         /// ctor
         /// </summary>
         /// <param name="options">Client options</param>
         /// <param name="apiOptions">Api client options</param>
-        protected BaseApiClient(BaseClientOptions options, ApiClientOptions apiOptions)
+        /// <param name="dataProcessor">Processor for received data</param>
+        protected BaseApiClient(BaseClientOptions options, ApiClientOptions apiOptions, IDataProcessor dataProcessor)
         {
             Options = apiOptions;
             _apiCredentials = apiOptions.ApiCredentials?.Copy() ?? options.ApiCredentials?.Copy();
+            DataProcessor = dataProcessor;
             BaseAddress = apiOptions.BaseAddress;
         }
 

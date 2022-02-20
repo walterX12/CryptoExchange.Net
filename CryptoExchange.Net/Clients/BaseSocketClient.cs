@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Threading;
@@ -95,6 +96,15 @@ namespace CryptoExchange.Net
         /// Client options
         /// </summary>
         public new BaseSocketClientOptions ClientOptions { get; }
+
+        /// <summary>
+        /// A default serializer
+        /// </summary>
+        private static readonly JsonSerializer defaultSerializer = JsonSerializer.Create(new JsonSerializerSettings
+        {
+            DateTimeZoneHandling = DateTimeZoneHandling.Utc,
+            Culture = CultureInfo.InvariantCulture
+        });
 
         #endregion
 
@@ -681,6 +691,100 @@ namespace CryptoExchange.Net
             }).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Tries to parse the json data and return a JToken, validating the input not being empty and being valid json
+        /// </summary>
+        /// <param name="data">The data to parse</param>
+        /// <returns></returns>
+        protected CallResult<JToken> ValidateJson(string data)
+        {
+            // TODO remove
+            if (string.IsNullOrEmpty(data))
+            {
+                var info = "Empty data object received";
+                log.Write(LogLevel.Error, info);
+                return new CallResult<JToken>(new DeserializeError(info, data));
+            }
+
+            try
+            {
+                return new CallResult<JToken>(JToken.Parse(data));
+            }
+            catch (JsonReaderException jre)
+            {
+                var info = $"Deserialize JsonReaderException: {jre.Message}, Path: {jre.Path}, LineNumber: {jre.LineNumber}, LinePosition: {jre.LinePosition}";
+                return new CallResult<JToken>(new DeserializeError(info, data));
+            }
+            catch (JsonSerializationException jse)
+            {
+                var info = $"Deserialize JsonSerializationException: {jse.Message}";
+                return new CallResult<JToken>(new DeserializeError(info, data));
+            }
+            catch (Exception ex)
+            {
+                var exceptionInfo = ex.ToLogString();
+                var info = $"Deserialize Unknown Exception: {exceptionInfo}";
+                return new CallResult<JToken>(new DeserializeError(info, data));
+            }
+        }
+
+        /// <summary>
+        /// Deserialize a string into an object
+        /// </summary>
+        /// <typeparam name="T">The type to deserialize into</typeparam>
+        /// <param name="data">The data to deserialize</param>
+        /// <param name="serializer">A specific serializer to use</param>
+        /// <param name="requestId">Id of the request the data is returned from (used for grouping logging by request)</param>
+        /// <returns></returns>
+        protected CallResult<T> Deserialize<T>(string data, JsonSerializer? serializer = null, int? requestId = null)
+        {
+            var tokenResult = ValidateJson(data);
+            if (!tokenResult)
+            {
+                log.Write(LogLevel.Error, tokenResult.Error!.Message);
+                return new CallResult<T>(tokenResult.Error);
+            }
+
+            return Deserialize<T>(tokenResult.Data, serializer, requestId);
+        }
+
+        /// <summary>
+        /// Deserialize a JToken into an object
+        /// </summary>
+        /// <typeparam name="T">The type to deserialize into</typeparam>
+        /// <param name="obj">The data to deserialize</param>
+        /// <param name="serializer">A specific serializer to use</param>
+        /// <param name="requestId">Id of the request the data is returned from (used for grouping logging by request)</param>
+        /// <returns></returns>
+        protected CallResult<T> Deserialize<T>(JToken obj, JsonSerializer? serializer = null, int? requestId = null)
+        {
+            serializer ??= defaultSerializer;
+
+            try
+            {
+                return new CallResult<T>(obj.ToObject<T>(serializer)!);
+            }
+            catch (JsonReaderException jre)
+            {
+                var info = $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize JsonReaderException: {jre.Message} Path: {jre.Path}, LineNumber: {jre.LineNumber}, LinePosition: {jre.LinePosition}, data: {obj}";
+                log.Write(LogLevel.Error, info);
+                return new CallResult<T>(new DeserializeError(info, obj));
+            }
+            catch (JsonSerializationException jse)
+            {
+                var info = $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize JsonSerializationException: {jse.Message} data: {obj}";
+                log.Write(LogLevel.Error, info);
+                return new CallResult<T>(new DeserializeError(info, obj));
+            }
+            catch (Exception ex)
+            {
+                var exceptionInfo = ex.ToLogString();
+                var info = $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize Unknown Exception: {exceptionInfo}, data: {obj}";
+                log.Write(LogLevel.Error, info);
+                return new CallResult<T>(new DeserializeError(info, obj));
+            }
+        }
+        
         /// <summary>
         /// Dispose the client
         /// </summary>

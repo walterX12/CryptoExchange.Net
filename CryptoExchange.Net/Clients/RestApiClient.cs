@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using CryptoExchange.Net.DataProcessors;
 using CryptoExchange.Net.Interfaces;
 using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
@@ -46,7 +47,8 @@ namespace CryptoExchange.Net
         /// </summary>
         /// <param name="options">The base client options</param>
         /// <param name="apiOptions">The Api client options</param>
-        public RestApiClient(BaseRestClientOptions options, RestApiClientOptions apiOptions): base(options, apiOptions)
+        /// <param name="dataProcessor">The data processor</param>
+        public RestApiClient(BaseRestClientOptions options, RestApiClientOptions apiOptions, IDataProcessor dataProcessor): base(options, apiOptions, dataProcessor)
         {
             var rateLimiters = new List<IRateLimiter>();
             foreach (var rateLimiter in apiOptions.RateLimiters)

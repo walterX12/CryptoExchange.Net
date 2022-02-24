@@ -97,6 +97,14 @@ namespace CryptoExchange.Net
         /// </summary>
         public new BaseSocketClientOptions ClientOptions { get; }
 
+        /// <summary>
+        /// A default serializer
+        /// </summary>
+        private static readonly JsonSerializer defaultSerializer = JsonSerializer.Create(new JsonSerializerSettings
+        {
+            DateTimeZoneHandling = DateTimeZoneHandling.Utc,
+            Culture = CultureInfo.InvariantCulture
+        });
         #endregion
 
         /// <summary>
@@ -176,7 +184,7 @@ namespace CryptoExchange.Net
                 socketConnection = GetSocketConnection(apiClient, url, authenticated);
 
                 // Add a subscription on the socket connection
-                subscription = AddSubscription(request, identifier, true, socketConnection, dataHandler);
+                subscription = AddSubscription(apiClient, request, identifier, true, socketConnection, dataHandler);
                 if (ClientOptions.SocketSubscriptionsCombineTarget == 1)
                 {
                     // Only 1 subscription per connection, so no need to wait for connection since a new subscription will create a new connection anyway
@@ -186,7 +194,7 @@ namespace CryptoExchange.Net
 
                 var needsConnecting = !socketConnection.Connected;
 
-                var connectResult = await ConnectIfNeededAsync(socketConnection, authenticated).ConfigureAwait(false);
+                var connectResult = await ConnectIfNeededAsync(apiClient, socketConnection, authenticated).ConfigureAwait(false);
                 if (!connectResult)
                     return new CallResult<UpdateSubscription>(connectResult.Error!);
 
@@ -208,7 +216,7 @@ namespace CryptoExchange.Net
             if (request != null)
             {
                 // Send the request and wait for answer
-                var subResult = await SubscribeAndWaitAsync(socketConnection, request, subscription).ConfigureAwait(false);
+                var subResult = await SubscribeAndWaitAsync(apiClient, socketConnection, request, subscription).ConfigureAwait(false);
                 if (!subResult)
                 {
                     await socketConnection.CloseAsync(subscription).ConfigureAwait(false);
@@ -240,10 +248,14 @@ namespace CryptoExchange.Net
         /// <param name="request">The request to send, will be serialized to json</param>
         /// <param name="subscription">The subscription the request is for</param>
         /// <returns></returns>
-        protected internal virtual async Task<CallResult<bool>> SubscribeAndWaitAsync(SocketConnection socketConnection, object request, SocketSubscription subscription)
+        protected internal virtual async Task<CallResult<bool>> SubscribeAndWaitAsync(SocketApiClient client, SocketConnection socketConnection, object request, SocketSubscription subscription)
         {
             CallResult<object>? callResult = null;
-            await socketConnection.SendAndWaitAsync(request, ClientOptions.SocketResponseTimeout, data => HandleSubscriptionResponse(socketConnection, subscription, request, data, out callResult)).ConfigureAwait(false);
+            var requestData = await client.DataProcessor.SerializeAsync(subscription.Id, request, default).ConfigureAwait(false);
+            if (!requestData)
+                return requestData.As(false);
+
+            await socketConnection.SendAndWaitAsync(requestData.Data, ClientOptions.SocketResponseTimeout, data => HandleSubscriptionResponse(socketConnection, subscription, request, data, out callResult)).ConfigureAwait(false);
 
             if (callResult?.Success == true)
             {
@@ -297,7 +309,7 @@ namespace CryptoExchange.Net
                     released = true;
                 }
 
-                var connectResult = await ConnectIfNeededAsync(socketConnection, authenticated).ConfigureAwait(false);
+                var connectResult = await ConnectIfNeededAsync(apiClient, socketConnection, authenticated).ConfigureAwait(false);
                 if (!connectResult)
                     return new CallResult<T>(connectResult.Error!);
             }
@@ -315,7 +327,7 @@ namespace CryptoExchange.Net
                 return new CallResult<T>(new ServerError("Socket is paused"));
             }
 
-            return await QueryAndWaitAsync<T>(socketConnection, request).ConfigureAwait(false);
+            return await QueryAndWaitAsync<T>(apiClient, socketConnection, request).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -325,10 +337,14 @@ namespace CryptoExchange.Net
         /// <param name="socket">The connection to send and wait on</param>
         /// <param name="request">The request to send</param>
         /// <returns></returns>
-        protected virtual async Task<CallResult<T>> QueryAndWaitAsync<T>(SocketConnection socket, object request)
+        protected virtual async Task<CallResult<T>> QueryAndWaitAsync<T>(SocketApiClient client, SocketConnection socket, object request)
         {
             var dataResult = new CallResult<T>(new ServerError("No response on query received"));
-            await socket.SendAndWaitAsync(request, ClientOptions.SocketResponseTimeout, data =>
+            var data = await client.DataProcessor.SerializeAsync(socket.Socket.Id, request, default).ConfigureAwait(false);
+            if (!data)
+                return data.As<T>(default);
+
+            await socket.SendAndWaitAsync(data.Data, ClientOptions.SocketResponseTimeout, data =>
             {
                 if (!HandleQueryResponse<T>(socket, request, data, out var callResult))
                     return false;
@@ -346,7 +362,7 @@ namespace CryptoExchange.Net
         /// <param name="socket">The connection to check</param>
         /// <param name="authenticated">Whether the socket should authenticated</param>
         /// <returns></returns>
-        protected virtual async Task<CallResult<bool>> ConnectIfNeededAsync(SocketConnection socket, bool authenticated)
+        protected virtual async Task<CallResult<bool>> ConnectIfNeededAsync(SocketApiClient client, SocketConnection socket, bool authenticated)
         {
             if (socket.Connected)
                 return new CallResult<bool>(true);
@@ -358,7 +374,7 @@ namespace CryptoExchange.Net
             if (!authenticated || socket.Authenticated)
                 return new CallResult<bool>(true);
 
-            var result = await AuthenticateSocketAsync(socket).ConfigureAwait(false);
+            var result = await AuthenticateSocketAsync(client, socket).ConfigureAwait(false);
             if (!result)
             {
                 await socket.CloseAsync().ConfigureAwait(false);
@@ -422,7 +438,7 @@ namespace CryptoExchange.Net
         /// </summary>
         /// <param name="socketConnection">The socket connection that should be authenticated</param>
         /// <returns></returns>
-        protected internal abstract Task<CallResult<bool>> AuthenticateSocketAsync(SocketConnection socketConnection);
+        protected internal abstract Task<CallResult<bool>> AuthenticateSocketAsync(SocketApiClient client, SocketConnection socketConnection);
         /// <summary>
         /// Needs to unsubscribe a subscription, typically by sending an unsubscribe request. If multiple subscriptions per socket is not allowed this can just return since the socket will be closed anyway
         /// </summary>
@@ -451,7 +467,7 @@ namespace CryptoExchange.Net
         /// <param name="connection">The socket connection the handler is on</param>
         /// <param name="dataHandler">The handler of the data received</param>
         /// <returns></returns>
-        protected virtual SocketSubscription AddSubscription<T>(object? request, string? identifier, bool userSubscription, SocketConnection connection, Action<DataEvent<T>> dataHandler)
+        protected virtual SocketSubscription AddSubscription<T>(SocketApiClient apiClient, object? request, string? identifier, bool userSubscription, SocketConnection connection, Action<DataEvent<T>> dataHandler)
         {
             void InternalHandler(MessageEvent messageEvent)
             {
@@ -462,7 +478,7 @@ namespace CryptoExchange.Net
                     return;
                 }
 
-                var desResult = Deserialize<T>(messageEvent.JsonData);
+                var desResult = apiClient.DataProcessor.Deserialize<T>(connection.Socket.Id, messageEvent.OriginalData, default);
                 if (!desResult)
                 {
                     log.Write(LogLevel.Warning, $"Socket {connection.Socket.Id} Failed to deserialize data into type {typeof(T)}: {desResult.Error}");
@@ -585,7 +601,7 @@ namespace CryptoExchange.Net
         /// <param name="identifier">Identifier for the periodic send</param>
         /// <param name="interval">How often</param>
         /// <param name="objGetter">Method returning the object to send</param>
-        public virtual void SendPeriodic(string identifier, TimeSpan interval, Func<SocketConnection, object> objGetter)
+        public virtual void SendPeriodic(SocketApiClient apiClient, string identifier, TimeSpan interval, Func<SocketConnection, object> objGetter)
         {
             if (objGetter == null)
                 throw new ArgumentNullException(nameof(objGetter));
@@ -615,7 +631,11 @@ namespace CryptoExchange.Net
 
                         try
                         {
-                            socket.Send(obj);
+                            var data = await apiClient.DataProcessor.SerializeAsync(socket.Socket.Id, obj, default).ConfigureAwait(false);
+                            if (!data)
+                                throw new Exception(data.Error!.ToString());
+
+                            socket.Send(data.Data);
                         }
                         catch (Exception ex)
                         {
@@ -693,37 +713,37 @@ namespace CryptoExchange.Net
         /// </summary>
         /// <param name="data">The data to parse</param>
         /// <returns></returns>
-        protected CallResult<JToken> ValidateJson(string data)
-        {
-            // TODO remove
-            if (string.IsNullOrEmpty(data))
-            {
-                var info = "Empty data object received";
-                log.Write(LogLevel.Error, info);
-                return new CallResult<JToken>(new DeserializeError(info, data));
-            }
+        //protected CallResult<JToken> ValidateJson(string data)
+        //{
+        //    // TODO remove
+        //    if (string.IsNullOrEmpty(data))
+        //    {
+        //        var info = "Empty data object received";
+        //        log.Write(LogLevel.Error, info);
+        //        return new CallResult<JToken>(new DeserializeError(info, data));
+        //    }
 
-            try
-            {
-                return new CallResult<JToken>(JToken.Parse(data));
-            }
-            catch (JsonReaderException jre)
-            {
-                var info = $"Deserialize JsonReaderException: {jre.Message}, Path: {jre.Path}, LineNumber: {jre.LineNumber}, LinePosition: {jre.LinePosition}";
-                return new CallResult<JToken>(new DeserializeError(info, data));
-            }
-            catch (JsonSerializationException jse)
-            {
-                var info = $"Deserialize JsonSerializationException: {jse.Message}";
-                return new CallResult<JToken>(new DeserializeError(info, data));
-            }
-            catch (Exception ex)
-            {
-                var exceptionInfo = ex.ToLogString();
-                var info = $"Deserialize Unknown Exception: {exceptionInfo}";
-                return new CallResult<JToken>(new DeserializeError(info, data));
-            }
-        }
+        //    try
+        //    {
+        //        return new CallResult<JToken>(JToken.Parse(data));
+        //    }
+        //    catch (JsonReaderException jre)
+        //    {
+        //        var info = $"Deserialize JsonReaderException: {jre.Message}, Path: {jre.Path}, LineNumber: {jre.LineNumber}, LinePosition: {jre.LinePosition}";
+        //        return new CallResult<JToken>(new DeserializeError(info, data));
+        //    }
+        //    catch (JsonSerializationException jse)
+        //    {
+        //        var info = $"Deserialize JsonSerializationException: {jse.Message}";
+        //        return new CallResult<JToken>(new DeserializeError(info, data));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        var exceptionInfo = ex.ToLogString();
+        //        var info = $"Deserialize Unknown Exception: {exceptionInfo}";
+        //        return new CallResult<JToken>(new DeserializeError(info, data));
+        //    }
+        //}
 
         /// <summary>
         /// Deserialize a string into an object
@@ -733,17 +753,17 @@ namespace CryptoExchange.Net
         /// <param name="serializer">A specific serializer to use</param>
         /// <param name="requestId">Id of the request the data is returned from (used for grouping logging by request)</param>
         /// <returns></returns>
-        protected CallResult<T> Deserialize<T>(string data, JsonSerializer? serializer = null, int? requestId = null)
-        {
-            var tokenResult = ValidateJson(data);
-            if (!tokenResult)
-            {
-                log.Write(LogLevel.Error, tokenResult.Error!.Message);
-                return new CallResult<T>(tokenResult.Error);
-            }
+        //protected CallResult<T> Deserialize<T>(string data, JsonSerializer? serializer = null, int? requestId = null)
+        //{
+        //    var tokenResult = ValidateJson(data);
+        //    if (!tokenResult)
+        //    {
+        //        log.Write(LogLevel.Error, tokenResult.Error!.Message);
+        //        return new CallResult<T>(tokenResult.Error);
+        //    }
 
-            return Deserialize<T>(tokenResult.Data, serializer, requestId);
-        }
+        //    return Deserialize<T>(tokenResult.Data, serializer, requestId);
+        //}
 
         /// <summary>
         /// Deserialize a JToken into an object
@@ -753,34 +773,34 @@ namespace CryptoExchange.Net
         /// <param name="serializer">A specific serializer to use</param>
         /// <param name="requestId">Id of the request the data is returned from (used for grouping logging by request)</param>
         /// <returns></returns>
-        protected CallResult<T> Deserialize<T>(JToken obj, JsonSerializer? serializer = null, int? requestId = null)
-        {
-            serializer ??= defaultSerializer;
+        //protected CallResult<T> Deserialize<T>(JToken obj, JsonSerializer? serializer = null, int? requestId = null)
+        //{
+        //    serializer ??= defaultSerializer;
 
-            try
-            {
-                return new CallResult<T>(obj.ToObject<T>(serializer)!);
-            }
-            catch (JsonReaderException jre)
-            {
-                var info = $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize JsonReaderException: {jre.Message} Path: {jre.Path}, LineNumber: {jre.LineNumber}, LinePosition: {jre.LinePosition}, data: {obj}";
-                log.Write(LogLevel.Error, info);
-                return new CallResult<T>(new DeserializeError(info, obj));
-            }
-            catch (JsonSerializationException jse)
-            {
-                var info = $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize JsonSerializationException: {jse.Message} data: {obj}";
-                log.Write(LogLevel.Error, info);
-                return new CallResult<T>(new DeserializeError(info, obj));
-            }
-            catch (Exception ex)
-            {
-                var exceptionInfo = ex.ToLogString();
-                var info = $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize Unknown Exception: {exceptionInfo}, data: {obj}";
-                log.Write(LogLevel.Error, info);
-                return new CallResult<T>(new DeserializeError(info, obj));
-            }
-        }
+        //    try
+        //    {
+        //        return new CallResult<T>(obj.ToObject<T>(serializer)!);
+        //    }
+        //    catch (JsonReaderException jre)
+        //    {
+        //        var info = $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize JsonReaderException: {jre.Message} Path: {jre.Path}, LineNumber: {jre.LineNumber}, LinePosition: {jre.LinePosition}, data: {obj}";
+        //        log.Write(LogLevel.Error, info);
+        //        return new CallResult<T>(new DeserializeError(info, obj));
+        //    }
+        //    catch (JsonSerializationException jse)
+        //    {
+        //        var info = $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize JsonSerializationException: {jse.Message} data: {obj}";
+        //        log.Write(LogLevel.Error, info);
+        //        return new CallResult<T>(new DeserializeError(info, obj));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        var exceptionInfo = ex.ToLogString();
+        //        var info = $"{(requestId != null ? $"[{requestId}] " : "")}Deserialize Unknown Exception: {exceptionInfo}, data: {obj}";
+        //        log.Write(LogLevel.Error, info);
+        //        return new CallResult<T>(new DeserializeError(info, obj));
+        //    }
+        //}
         
         /// <summary>
         /// Dispose the client

@@ -310,7 +310,7 @@ namespace CryptoExchange.Net.Sockets
         /// <param name="timeout">The timeout for response</param>
         /// <param name="handler">The response handler, should return true if the received JToken was the response to the request</param>
         /// <returns></returns>
-        public virtual Task SendAndWaitAsync<T>(T obj, TimeSpan timeout, Func<JToken, bool> handler)
+        public virtual Task SendAndWaitAsync(string obj, TimeSpan timeout, Func<JToken, bool> handler)
         {
             var pending = new PendingRequest(handler, timeout);
             lock (pendingRequests)
@@ -327,13 +327,13 @@ namespace CryptoExchange.Net.Sockets
         /// <typeparam name="T">The type of the object to send</typeparam>
         /// <param name="obj">The object to send</param>
         /// <param name="nullValueHandling">How null values should be serialized</param>
-        public virtual void Send<T>(T obj, NullValueHandling nullValueHandling = NullValueHandling.Ignore)
-        {
-            if(obj is string str)
-                Send(str);
-            else
-                Send(JsonConvert.SerializeObject(obj, Formatting.None, new JsonSerializerSettings { NullValueHandling = nullValueHandling }));
-        }
+        //public virtual void Send<T>(T obj, NullValueHandling nullValueHandling = NullValueHandling.Ignore)
+        //{
+        //    if(obj is string str)
+        //        Send(str);
+        //    else
+        //        Send(JsonConvert.SerializeObject(obj, Formatting.None, new JsonSerializerSettings { NullValueHandling = nullValueHandling }));
+        //}
 
         /// <summary>
         /// Send string data over the websocket connection

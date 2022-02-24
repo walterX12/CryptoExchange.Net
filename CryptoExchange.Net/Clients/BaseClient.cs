@@ -1,8 +1,15 @@
-﻿using CryptoExchange.Net.Logging;
+﻿using CryptoExchange.Net.Authentication;
+using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace CryptoExchange.Net
 {
@@ -66,7 +73,6 @@ namespace CryptoExchange.Net
             return apiClient;
         }
 
-        
         /// <summary>
         /// Generate a new unique id. The id is staticly stored so it is guarenteed to be unique across different client instances
         /// </summary>

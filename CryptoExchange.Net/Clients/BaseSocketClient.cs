@@ -97,15 +97,6 @@ namespace CryptoExchange.Net
         /// </summary>
         public new BaseSocketClientOptions ClientOptions { get; }
 
-        /// <summary>
-        /// A default serializer
-        /// </summary>
-        private static readonly JsonSerializer defaultSerializer = JsonSerializer.Create(new JsonSerializerSettings
-        {
-            DateTimeZoneHandling = DateTimeZoneHandling.Utc,
-            Culture = CultureInfo.InvariantCulture
-        });
-
         #endregion
 
         /// <summary>
@@ -162,6 +153,9 @@ namespace CryptoExchange.Net
         /// <returns></returns>
         protected virtual async Task<CallResult<UpdateSubscription>> SubscribeAsync<T>(SocketApiClient apiClient, string url, object? request, string? identifier, bool authenticated, Action<DataEvent<T>> dataHandler, CancellationToken ct)
         {
+            if (disposing)
+                return new CallResult<UpdateSubscription>(new InvalidOperationError("Client disposed, can't subscribe"));
+
             SocketConnection socketConnection;
             SocketSubscription subscription;
             var released = false;
@@ -287,6 +281,9 @@ namespace CryptoExchange.Net
         /// <returns></returns>
         protected virtual async Task<CallResult<T>> QueryAsync<T>(SocketApiClient apiClient, string url, object request, bool authenticated)
         {
+            if (disposing)
+                return new CallResult<T>(new InvalidOperationError("Client disposed, can't query"));
+
             SocketConnection socketConnection;
             var released = false;
             await semaphoreSlim.WaitAsync().ConfigureAwait(false);

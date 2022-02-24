@@ -231,7 +231,7 @@ namespace CryptoExchange.Net
                         error = new ServerError(data);
                     if (error.Code == null || error.Code == 0)
                         error.Code = (int)response.StatusCode;
-
+                        
                     return new WebCallResult<T>(statusCode, headers, sw.Elapsed, data, request.Uri.ToString(), request.Content, request.Method, request.GetHeaders(), default, error);
                 }
             }

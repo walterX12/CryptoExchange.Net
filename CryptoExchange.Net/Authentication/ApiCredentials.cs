@@ -70,6 +70,7 @@ namespace CryptoExchange.Net.Authentication
         public virtual ApiCredentials Copy()
         {
             if (PrivateKey == null)
+                // Use .GetString() to create a copy of the SecureString
                 return new ApiCredentials(Key!.GetString(), Secret!.GetString());
             else
                 return new ApiCredentials(PrivateKey!.Copy());

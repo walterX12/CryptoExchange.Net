@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -105,7 +106,7 @@ namespace CryptoExchange.Net
         /// <param name="parameterPosition">Where the parameters should be placed, overwrites the value set in the client</param>
         /// <param name="arraySerialization">How array parameters should be serialized, overwrites the value set in the client</param>
         /// <param name="requestWeight">Credits used for the request</param>
-        /// <param name="processor">The data processor to use for this request</param>
+        /// <param name="converter">The data converter to use for this request</param>
         /// <param name="additionalHeaders">Additional headers to send with the request</param>
         /// <returns></returns>
         [return: NotNull]
@@ -120,7 +121,7 @@ namespace CryptoExchange.Net
             ArrayParametersSerialization? arraySerialization = null, 
             int requestWeight = 1,
             Dictionary<string, string>? additionalHeaders = null,
-            IDataProcessor? processor = null
+            IDataConverter? converter = null
             ) where T : class
         {
             var requestId = NextId();
@@ -164,7 +165,7 @@ namespace CryptoExchange.Net
 
             apiClient.TotalRequestsMade++;
             log.Write(LogLevel.Debug, $"[{requestId}] Sending {method}{(signed ? " signed" : "")} request to {request.Uri}{paramString ?? " "}{(ClientOptions.Proxy == null ? "" : $" via proxy {ClientOptions.Proxy.Host}")}");
-            return await GetResponseAsync<T>(apiClient, request, processor, cancellationToken).ConfigureAwait(false);
+            return await GetResponseAsync<T>(apiClient, request, converter, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -172,13 +173,13 @@ namespace CryptoExchange.Net
         /// </summary>
         /// <param name="apiClient">The apiClient executing the request</param>
         /// <param name="request">The request object to execute</param>
-        /// <param name="dataProcessor">The data processor to use for this request</param>
+        /// <param name="dataConverter">The data processor to use for this request</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
-        protected virtual async Task<WebCallResult<T>> GetResponseAsync<T>(RestApiClient apiClient, IRequest request, IDataProcessor? dataProcessor, CancellationToken cancellationToken)
+        protected virtual async Task<WebCallResult<T>> GetResponseAsync<T>(RestApiClient apiClient, IRequest request, IDataConverter? dataConverter, CancellationToken cancellationToken)
         {
 
-            dataProcessor ??= apiClient.DataProcessor;
+            dataConverter ??= apiClient.DataConverter;
 
             try
             {
@@ -200,18 +201,18 @@ namespace CryptoExchange.Net
                         response.Close();
                         log.Write(LogLevel.Debug, $"[{request.RequestId}] Response received in {sw.ElapsedMilliseconds}ms: {data}");
 
-                        var error = await dataProcessor.CheckForErrorAsync(data).ConfigureAwait(false);
+                        var error = TryParseError(response.StatusCode, data);
                         if (error != null)
                             return new WebCallResult<T>(response.StatusCode, response.ResponseHeaders, sw.Elapsed, ClientOptions.OutputOriginalData ? data : null, request.Uri.ToString(), request.Content, request.Method, request.GetHeaders(), default, error);
 
                         // Not an error, so continue deserializing
-                        var deserializeResult = await dataProcessor.DeserializeAsync<T>(request.RequestId, data, cancellationToken).ConfigureAwait(false);
+                        var deserializeResult = await dataConverter.DeserializeAsync<T>(request.RequestId, data, cancellationToken).ConfigureAwait(false);
                         return new WebCallResult<T>(response.StatusCode, response.ResponseHeaders, sw.Elapsed, ClientOptions.OutputOriginalData ? data: null, request.Uri.ToString(), request.Content, request.Method, request.GetHeaders(), deserializeResult.Data, deserializeResult.Error);
                     }
                     else
                     {
                         // Success status code, and we don't have to check for errors. Continue deserializing directly from the stream
-                        var desResult = await apiClient.DataProcessor.DeserializeAsync<T>(request.RequestId, responseStream, cancellationToken).ConfigureAwait(false);
+                        var desResult = await dataConverter.DeserializeAsync<T>(request.RequestId, responseStream, cancellationToken).ConfigureAwait(false);
                         responseStream.Close();
                         response.Close();
 
@@ -226,11 +227,9 @@ namespace CryptoExchange.Net
                     log.Write(LogLevel.Debug, $"[{request.RequestId}] Error received: {data}");
                     responseStream.Close();
                     response.Close();
-                    var error = await dataProcessor.CheckForErrorAsync(data).ConfigureAwait(false);
+                    var error = TryParseError(response.StatusCode, data);
                     if (error == null)
-                        error = new ServerError(data);
-                    if (error.Code == null || error.Code == 0)
-                        error.Code = (int)response.StatusCode;
+                        error = new ServerError((int)response.StatusCode, data);
                         
                     return new WebCallResult<T>(statusCode, headers, sw.Elapsed, data, request.Uri.ToString(), request.Content, request.Method, request.GetHeaders(), default, error);
                 }
@@ -257,6 +256,21 @@ namespace CryptoExchange.Net
                     return new WebCallResult<T>(null, null, null, null, request.Uri.ToString(), request.Content, request.Method, request.GetHeaders(), default, new WebError($"[{request.RequestId}] Request timed out"));
                 }
             }
+        }
+
+        /// <summary>
+        /// Try parse an error. Should return null if the data/status does not indicate an error
+        /// </summary>
+        /// <param name="status">The response status code</param>
+        /// <param name="data">The data</param>
+        /// <returns></returns>
+        protected virtual ServerError? TryParseError(HttpStatusCode status, string data)
+        {
+            var code = (int)status;
+            if (code >= 200 && code <= 299)
+                return null;
+
+            return new ServerError(code, data);
         }
 
         /// <summary>

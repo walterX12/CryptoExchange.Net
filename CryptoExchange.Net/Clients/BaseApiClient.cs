@@ -43,21 +43,21 @@ namespace CryptoExchange.Net
         internal ApiClientOptions Options { get; }
 
         /// <summary>
-        /// Processor for received data
+        /// Processor for data (de)serialization
         /// </summary>
-        public IDataProcessor DataProcessor { get; }
+        public IDataConverter DataConverter { get; }
 
         /// <summary>
         /// ctor
         /// </summary>
         /// <param name="options">Client options</param>
         /// <param name="apiOptions">Api client options</param>
-        /// <param name="dataProcessor">Processor for received data</param>
-        protected BaseApiClient(BaseClientOptions options, ApiClientOptions apiOptions, IDataProcessor dataProcessor)
+        /// <param name="dataConverter">Processor for received data</param>
+        protected BaseApiClient(BaseClientOptions options, ApiClientOptions apiOptions, IDataConverter dataConverter)
         {
             Options = apiOptions;
             _apiCredentials = apiOptions.ApiCredentials?.Copy() ?? options.ApiCredentials?.Copy();
-            DataProcessor = dataProcessor;
+            DataConverter = dataConverter;
             BaseAddress = apiOptions.BaseAddress;
         }
 

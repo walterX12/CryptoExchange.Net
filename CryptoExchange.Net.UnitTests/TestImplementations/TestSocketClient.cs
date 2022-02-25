@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using CryptoExchange.Net.Authentication;
+using CryptoExchange.Net.DataProcessors;
 using CryptoExchange.Net.Interfaces;
 using CryptoExchange.Net.Logging;
 using CryptoExchange.Net.Objects;
@@ -20,9 +21,14 @@ namespace CryptoExchange.Net.UnitTests.TestImplementations
 
         public TestSocketClient(TestOptions exchangeOptions) : base("test", exchangeOptions)
         {
-            SubClient = new TestSubSocketClient(exchangeOptions, exchangeOptions.SubOptions);
+            SubClient = new TestSubSocketClient(exchangeOptions, exchangeOptions.SubOptions, new JsonDataConverter(log, new Newtonsoft.Json.JsonSerializer()));
             SocketFactory = new Mock<IWebsocketFactory>().Object;
             Mock.Get(SocketFactory).Setup(f => f.CreateWebsocket(It.IsAny<Log>(), It.IsAny<string>())).Returns(new TestSocket());
+        }
+
+        private ServerError ParseError(string data)
+        {
+            return null;
         }
 
         public TestSocket CreateSocket()
@@ -76,7 +82,7 @@ namespace CryptoExchange.Net.UnitTests.TestImplementations
     public class TestSubSocketClient : SocketApiClient
     {
 
-        public TestSubSocketClient(BaseClientOptions options, ApiClientOptions apiOptions): base(options, apiOptions)
+        public TestSubSocketClient(BaseClientOptions options, ApiClientOptions apiOptions, IDataConverter dataConverter): base(options, apiOptions, dataConverter)
         {
 
         }

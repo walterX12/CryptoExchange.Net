@@ -48,7 +48,7 @@ namespace CryptoExchange.Net
         /// <param name="options">The base client options</param>
         /// <param name="apiOptions">The Api client options</param>
         /// <param name="dataProcessor">The data processor</param>
-        public RestApiClient(BaseRestClientOptions options, RestApiClientOptions apiOptions, IDataProcessor dataProcessor): base(options, apiOptions, dataProcessor)
+        public RestApiClient(BaseRestClientOptions options, RestApiClientOptions apiOptions, IDataConverter dataProcessor): base(options, apiOptions, dataProcessor)
         {
             var rateLimiters = new List<IRateLimiter>();
             foreach (var rateLimiter in apiOptions.RateLimiters)

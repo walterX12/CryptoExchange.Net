@@ -13,8 +13,8 @@ namespace CryptoExchange.Net
         /// </summary>
         /// <param name="options">The base client options</param>
         /// <param name="apiOptions">The Api client options</param>
-        /// <param name="dataProcessor">The data processor</param>
-        public SocketApiClient(BaseClientOptions options, ApiClientOptions apiOptions, IDataProcessor dataProcessor): base(options, apiOptions, dataProcessor)
+        /// <param name="dataConverter">The data converter</param>
+        public SocketApiClient(BaseClientOptions options, ApiClientOptions apiOptions, IDataConverter dataConverter): base(options, apiOptions, dataConverter)
         {
         }
     }

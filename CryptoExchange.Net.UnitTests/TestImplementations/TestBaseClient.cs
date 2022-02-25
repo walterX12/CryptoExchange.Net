@@ -21,11 +21,6 @@ namespace CryptoExchange.Net.UnitTests
         {
             log.Write(verbosity, data);
         }
-
-        public CallResult<T> Deserialize<T>(string data)
-        {
-            return Deserialize<T>(data, null, null);
-        }
     }
 
     public class TestAuthProvider : AuthenticationProvider

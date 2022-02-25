@@ -12,24 +12,26 @@ using System.Threading.Tasks;
 
 namespace CryptoExchange.Net.DataProcessors
 {
-    public class JsonDataProcessor : IDataProcessor
+    /// <summary>
+    /// A JSON protocol implementation of the IDataConverter
+    /// </summary>
+    public class JsonDataConverter : IDataConverter
     {
-        private Func<string, Task<ServerError?>> _errorChecker;
         private Log _log;
         private JsonSerializer _serializer;
 
-        public JsonDataProcessor(Log log, Func<string, Task<ServerError?>> errorChecker, JsonSerializer serializer)
+        /// <summary>
+        /// ctor
+        /// </summary>
+        /// <param name="log"></param>
+        /// <param name="serializer"></param>
+        public JsonDataConverter(Log log, JsonSerializer serializer)
         {
             _log = log;
-            _errorChecker = errorChecker;
             _serializer = serializer;
         }
 
-        public virtual Task<ServerError?> CheckForErrorAsync(string dataString)
-        {
-            return _errorChecker(dataString);
-        }
-
+        /// <inheritdoc />
         public virtual async Task<CallResult<T>> DeserializeAsync<T>(int id, Stream dataStream, CancellationToken ct)
         {
             try
@@ -84,12 +86,7 @@ namespace CryptoExchange.Net.DataProcessors
             }
         }
 
-        private static async Task<string> ReadStreamAsync(Stream stream)
-        {
-            using var reader = new StreamReader(stream, Encoding.UTF8, false, 512, true);
-            return await reader.ReadToEndAsync().ConfigureAwait(false);
-        }
-
+        /// <inheritdoc />
         public virtual Task<CallResult<T>> DeserializeAsync<T>(int id, string dataString, CancellationToken ct)
         {
             var tokenResult = ValidateJson(dataString);
@@ -102,6 +99,38 @@ namespace CryptoExchange.Net.DataProcessors
             return Task.FromResult(DeserializeToken<T>(id, tokenResult.Data));
         }
 
+        /// <inheritdoc />
+        public virtual CallResult<T> Deserialize<T>(int id, string dataString, CancellationToken ct)
+        {
+            var tokenResult = ValidateJson(dataString);
+            if (!tokenResult)
+            {
+                _log.Write(LogLevel.Error, tokenResult.Error!.Message);
+                return new CallResult<T>(tokenResult.Error);
+            }
+
+            return DeserializeToken<T>(id, tokenResult.Data);
+        }
+
+        /// <inheritdoc />
+        public CallResult<string> Serialize<T>(int id, T data, CancellationToken ct)
+        {
+            return new CallResult<string>(JsonConvert.SerializeObject(data));
+        }
+
+        /// <inheritdoc />
+        public Task<CallResult<string>> SerializeAsync<T>(int id, T data, CancellationToken ct)
+        {
+            return Task.FromResult(new CallResult<string>(JsonConvert.SerializeObject(data)));
+        }
+
+        /// <summary>
+        /// Deserialize a JToken
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="id"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
         protected CallResult<T> DeserializeToken<T>(int id, JToken token)
         {
             try
@@ -127,6 +156,12 @@ namespace CryptoExchange.Net.DataProcessors
                 _log.Write(LogLevel.Error, info);
                 return new CallResult<T>(new DeserializeError(info, token));
             }
+        }
+
+        private static async Task<string> ReadStreamAsync(Stream stream)
+        {
+            using var reader = new StreamReader(stream, Encoding.UTF8, false, 512, true);
+            return await reader.ReadToEndAsync().ConfigureAwait(false);
         }
 
         /// <summary>

@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CryptoExchange.Net.Authentication;
 using System.Collections.Generic;
+using CryptoExchange.Net.DataProcessors;
 
 namespace CryptoExchange.Net.UnitTests.TestImplementations
 {
@@ -26,11 +27,10 @@ namespace CryptoExchange.Net.UnitTests.TestImplementations
 
         public TestRestClient(TestClientOptions exchangeOptions) : base("Test", exchangeOptions)
         {
-            Api1 = new TestRestApi1Client(exchangeOptions);
-            Api2 = new TestRestApi2Client(exchangeOptions);
+            Api1 = new TestRestApi1Client(exchangeOptions, new JsonDataConverter(log, new Newtonsoft.Json.JsonSerializer()));
+            Api2 = new TestRestApi2Client(exchangeOptions, new JsonDataConverter(log, new Newtonsoft.Json.JsonSerializer()));
             RequestFactory = new Mock<IRequestFactory>().Object;
         }
-
         public void SetParameterPosition(HttpMethod method, HttpMethodParameterPosition position)
         {
             ParameterPositions[method] = position;
@@ -118,7 +118,7 @@ namespace CryptoExchange.Net.UnitTests.TestImplementations
 
     public class TestRestApi1Client : RestApiClient
     {
-        public TestRestApi1Client(TestClientOptions options): base(options, options.Api1Options)
+        public TestRestApi1Client(TestClientOptions options, IDataConverter dataConverter): base(options, options.Api1Options, dataConverter)
         {
 
         }
@@ -144,7 +144,7 @@ namespace CryptoExchange.Net.UnitTests.TestImplementations
 
     public class TestRestApi2Client : RestApiClient
     {
-        public TestRestApi2Client(TestClientOptions options) : base(options, options.Api2Options)
+        public TestRestApi2Client(TestClientOptions options, IDataConverter dataConverter) : base(options, options.Api2Options, dataConverter)
         {
 
         }
@@ -187,8 +187,9 @@ namespace CryptoExchange.Net.UnitTests.TestImplementations
         public ParseErrorTestRestClient() { }
         public ParseErrorTestRestClient(TestClientOptions exchangeOptions) : base(exchangeOptions) { }
 
-        protected override Error ParseErrorResponse(JToken error)
+        protected override ServerError TryParseError(HttpStatusCode code, string errorString)
         {
+            var error = errorString.ToJToken();
             return new ServerError((int)error["errorCode"], (string)error["errorMessage"]);
         }
     }

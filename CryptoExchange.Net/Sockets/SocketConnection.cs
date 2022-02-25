@@ -305,35 +305,20 @@ namespace CryptoExchange.Net.Sockets
         /// <summary>
         /// Send data and wait for an answer
         /// </summary>
-        /// <typeparam name="T">The data type expected in response</typeparam>
-        /// <param name="obj">The object to send</param>
+        /// <param name="data">The data to send</param>
         /// <param name="timeout">The timeout for response</param>
         /// <param name="handler">The response handler, should return true if the received JToken was the response to the request</param>
         /// <returns></returns>
-        public virtual Task SendAndWaitAsync(string obj, TimeSpan timeout, Func<JToken, bool> handler)
+        public virtual Task SendAndWaitAsync(string data, TimeSpan timeout, Func<JToken, bool> handler)
         {
             var pending = new PendingRequest(handler, timeout);
             lock (pendingRequests)
             {
                 pendingRequests.Add(pending);
             }
-            Send(obj);
+            Send(data);
             return pending.Event.WaitAsync(timeout);
         }
-
-        /// <summary>
-        /// Send data over the websocket connection
-        /// </summary>
-        /// <typeparam name="T">The type of the object to send</typeparam>
-        /// <param name="obj">The object to send</param>
-        /// <param name="nullValueHandling">How null values should be serialized</param>
-        //public virtual void Send<T>(T obj, NullValueHandling nullValueHandling = NullValueHandling.Ignore)
-        //{
-        //    if(obj is string str)
-        //        Send(str);
-        //    else
-        //        Send(JsonConvert.SerializeObject(obj, Formatting.None, new JsonSerializerSettings { NullValueHandling = nullValueHandling }));
-        //}
 
         /// <summary>
         /// Send string data over the websocket connection
@@ -520,7 +505,7 @@ namespace CryptoExchange.Net.Sockets
                     if (!Socket.IsOpen)
                         continue;
 
-                    var task = socketClient.SubscribeAndWaitAsync(this, subscription.Request!, subscription).ContinueWith(t =>
+                    var task = socketClient.SubscribeAndWaitAsync(ApiClient, this, subscription.Request!, subscription).ContinueWith(t =>
                     {
                         if (!t.Result)
                             success = false;
@@ -547,7 +532,7 @@ namespace CryptoExchange.Net.Sockets
             if (!Socket.IsOpen)
                 return new CallResult<bool>(new UnknownError("Socket is not connected"));
 
-            return await socketClient.SubscribeAndWaitAsync(this, socketSubscription.Request!, socketSubscription).ConfigureAwait(false);
+            return await socketClient.SubscribeAndWaitAsync(ApiClient, this, socketSubscription.Request!, socketSubscription).ConfigureAwait(false);
         }
         
         /// <summary>

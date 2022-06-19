@@ -493,14 +493,14 @@ namespace CryptoExchange.Net
                     return;
                 }
 
-                var desResult = Deserialize<T>(messageEvent.JsonData);
-                if (!desResult)
-                {
-                    log.Write(LogLevel.Warning, $"Socket {connection.SocketId} Failed to deserialize data into type {typeof(T)}: {desResult.Error}");
-                    return;
-                }
+                //var desResult = Deserialize<T>(messageEvent.JsonData);
+                //if (!desResult)
+                //{
+                //    log.Write(LogLevel.Warning, $"Socket {connection.SocketId} Failed to deserialize data into type {typeof(T)}: {desResult.Error}");
+                //    return;
+                //}
 
-                dataHandler(new DataEvent<T>(desResult.Data, null, ClientOptions.OutputOriginalData ? messageEvent.OriginalData : null, messageEvent.ReceivedTimestamp));
+                //dataHandler(new DataEvent<T>(desResult.Data, null, ClientOptions.OutputOriginalData ? messageEvent.OriginalData : null, messageEvent.ReceivedTimestamp));
             }
 
             var subscription = request == null
